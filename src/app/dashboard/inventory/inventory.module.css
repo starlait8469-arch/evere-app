@@ -107,7 +107,8 @@
 }
 
 .catSelect option {
-    background: #1e1e2e;
+    background: var(--bg-card);
+    color: var(--text-primary);
 }
 
 .catInput {
@@ -413,7 +414,8 @@
 }
 
 .input option {
-    background: #1e1e2e;
+    background: var(--bg-card);
+    color: var(--text-primary);
 }
 
 .error {
