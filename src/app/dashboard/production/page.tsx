@@ -108,9 +108,15 @@ export default function ProductionPage() {
 
     const fetchOrders = async () => {
         setLoading(true);
+
+        // done 단계 중 오늘(자정 기준) 이전에 완료된 것은 메인 뷰에서 제외
+        const todayMidnight = new Date();
+        todayMidnight.setHours(0, 0, 0, 0);
+
         const { data } = await supabase
             .from("production_orders")
             .select("*, sewing_factories(name)")
+            .or(`stage.neq.done,completed_at.gte.${todayMidnight.toISOString()}`)
             .order("created_at", { ascending: false });
         if (data) setOrders(data as unknown as ProductionOrder[]);
         setLoading(false);
