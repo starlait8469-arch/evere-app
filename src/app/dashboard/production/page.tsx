@@ -61,7 +61,16 @@ export default function ProductionPage() {
     const [filterStage, setFilterStage] = useState<Stage | "all">("all");
 
     // 탭
-    const [tab, setTab] = useState<"status" | "new">("status");
+    const [tab, setTab] = useState<"status" | "new" | "fabric">("status");
+
+    // 천 재고
+    type FabricItem = { id: string; name: string; quantity: number; unit: string; note: string | null };
+    const [fabrics, setFabrics] = useState<FabricItem[]>([]);
+    const [fabricLoading, setFabricLoading] = useState(false);
+    const [newFabricName, setNewFabricName] = useState("");
+    const [newFabricUnit, setNewFabricUnit] = useState("m");
+    const [addingFabric, setAddingFabric] = useState(false);
+    const [fabricAdjusts, setFabricAdjusts] = useState<Record<string, string>>({});
 
     // 신규 등록 폼 - 배치 방식 (색상 공통, 여러 행)
     const [categories, setCategories] = useState<Category[]>([]);
@@ -103,6 +112,7 @@ export default function ProductionPage() {
         fetchOrders();
         fetchFactories();
         fetchCategories();
+        fetchFabrics();
     }, []);
 
 
@@ -125,6 +135,41 @@ export default function ProductionPage() {
     const fetchFactories = async () => {
         const { data } = await supabase.from("sewing_factories").select("id, name").order("name");
         if (data) setFactories(data);
+    };
+
+    const fetchFabrics = async () => {
+        setFabricLoading(true);
+        const { data } = await supabase.from("fabric_inventory").select("*").order("name");
+        setFabrics((data as FabricItem[]) || []);
+        setFabricLoading(false);
+    };
+
+    const addFabric = async () => {
+        if (!newFabricName.trim()) return;
+        await supabase.from("fabric_inventory").insert([{ name: newFabricName.trim(), unit: newFabricUnit, quantity: 0 }]);
+        setNewFabricName(""); setNewFabricUnit("m"); setAddingFabric(false);
+        fetchFabrics();
+    };
+
+    const adjustFabric = async (id: string, delta: number) => {
+        const item = fabrics.find(f => f.id === id);
+        if (!item) return;
+        const newQty = Math.max(0, item.quantity + delta);
+        await supabase.from("fabric_inventory").update({ quantity: newQty }).eq("id", id);
+        fetchFabrics();
+    };
+
+    const setFabricQty = async (id: string, val: string) => {
+        const qty = parseFloat(val);
+        if (isNaN(qty) || qty < 0) return;
+        await supabase.from("fabric_inventory").update({ quantity: qty }).eq("id", id);
+        fetchFabrics();
+        setFabricAdjusts(prev => { const n = { ...prev }; delete n[id]; return n; });
+    };
+
+    const deleteFabric = async (id: string) => {
+        await supabase.from("fabric_inventory").delete().eq("id", id);
+        fetchFabrics();
     };
 
     const fetchCategories = async () => {
@@ -613,6 +658,12 @@ export default function ProductionPage() {
                     onClick={() => setTab("new")}
                 >
                     {lang === "ko" ? "➕ 신규 등록" : "➕ Nueva Orden"}
+                </button>
+                <button
+                    className={`${styles.tab} ${tab === "fabric" ? styles.tabActive : ""}`}
+                    onClick={() => setTab("fabric")}
+                >
+                    🧵 {lang === "ko" ? "천 재고" : "Telas"}
                 </button>
             </div>
 
@@ -1227,6 +1278,74 @@ export default function ProductionPage() {
                             </button>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* ─── 탭3: 천 재고 ─── */}
+            {tab === "fabric" && (
+                <div className={styles.fabricTab}>
+                    <div className={styles.fabricHeader}>
+                        <h2 className={styles.fabricTitle}>
+                            🧵 {lang === "ko" ? "천 재고 관리" : "Stock de telas"}
+                        </h2>
+                        {isAdmin && (
+                            <button className={styles.addFabricBtn} onClick={() => setAddingFabric(true)}>
+                                + {lang === "ko" ? "원단 추가" : "Agregar tela"}
+                            </button>
+                        )}
+                    </div>
+
+                    {/* 신규 원단 추가 폼 (관리자) */}
+                    {addingFabric && (
+                        <div className={styles.fabricAddForm}>
+                            <input
+                                className={styles.fabricInput}
+                                placeholder={lang === "ko" ? "원단 이름 (예: 면 30수)" : "Nombre (ej: algodón 30)"}
+                                value={newFabricName}
+                                onChange={e => setNewFabricName(e.target.value)}
+                                onKeyDown={e => e.key === "Enter" && addFabric()}
+                                autoFocus
+                            />
+                            <select className={styles.fabricUnitSel} value={newFabricUnit} onChange={e => setNewFabricUnit(e.target.value)}>
+                                {["m", "kg", "yd", "롤"].map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                            <button className={styles.fabricConfirmBtn} onClick={addFabric}>✓</button>
+                            <button className={styles.fabricCancelBtn} onClick={() => { setAddingFabric(false); setNewFabricName(""); }}>✕</button>
+                        </div>
+                    )}
+
+                    {/* 원단 목록 */}
+                    {fabricLoading ? (
+                        <div className={styles.empty}>Loading...</div>
+                    ) : fabrics.length === 0 ? (
+                        <div className={styles.empty}>
+                            {lang === "ko" ? "등록된 원단이 없습니다" : "No hay telas registradas"}
+                        </div>
+                    ) : (
+                        <div className={styles.fabricList}>
+                            {fabrics.map(f => (
+                                <div key={f.id} className={styles.fabricCard}>
+                                    <div className={styles.fabricName}>{f.name}</div>
+                                    <div className={styles.fabricControls}>
+                                        <button className={styles.fabricAdjBtn} onClick={() => adjustFabric(f.id, -1)}>−</button>
+                                        <input
+                                            type="number"
+                                            className={styles.fabricQtyInput}
+                                            value={fabricAdjusts[f.id] !== undefined ? fabricAdjusts[f.id] : f.quantity}
+                                            onChange={e => setFabricAdjusts(prev => ({ ...prev, [f.id]: e.target.value }))}
+                                            onBlur={e => setFabricQty(f.id, e.target.value)}
+                                            onKeyDown={e => e.key === "Enter" && setFabricQty(f.id, (fabricAdjusts[f.id] ?? String(f.quantity)))}
+                                        />
+                                        <span className={styles.fabricUnit}>{f.unit}</span>
+                                        <button className={styles.fabricAdjBtn} onClick={() => adjustFabric(f.id, 1)}>+</button>
+                                    </div>
+                                    {isAdmin && (
+                                        <button className={styles.fabricDelBtn} onClick={() => deleteFabric(f.id)}>🗑</button>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
         </div>
