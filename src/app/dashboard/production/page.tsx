@@ -71,6 +71,11 @@ export default function ProductionPage() {
     const [factoryModal, setFactoryModal] = useState<{ orderId: string; } | null>(null);
     const [selectedFactory, setSelectedFactory] = useState("");
 
+    // 단계 이동 확인 모달
+    const [advanceModal, setAdvanceModal] = useState<{ order: ProductionOrder } | null>(null);
+    // 롤백 확인 모달
+    const [rollbackModal, setRollbackModal] = useState<{ order: ProductionOrder } | null>(null);
+
     useEffect(() => {
         fetchOrders();
         fetchFactories();
@@ -100,20 +105,38 @@ export default function ProductionPage() {
         if (data) setCategories(data);
     };
 
-    // 다음 단계로 이동
-    const advanceStage = async (order: ProductionOrder) => {
+    // 이전 단계 맵
+    const PREV_STAGE: Record<Stage, Stage | null> = {
+        cutting: null,
+        sewing: "cutting",
+        finishing: "sewing",
+        done: "finishing",
+    };
+
+    // 다음 단계 이동 (확인 모달 열기)
+    const openAdvance = (order: ProductionOrder) => {
         const nextStage = NEXT_STAGE[order.stage];
         if (!nextStage) return;
-
-        // 봉제 단계로 넘어갈 때 공장 선택 모달
+        // 봉제 단계로 넘어갈 때는 기존 공장 선택 모달
         if (nextStage === "sewing") {
             setSelectedFactory("");
             setFactoryModal({ orderId: order.id });
             return;
         }
+        // 나머지 단계는 확인 모달
+        setAdvanceModal({ order });
+    };
 
-        // 입고 완료 단계: inventory에 수량 추가 (직접 upsert)
+    // 다음 단계 이동 실행
+    const doAdvance = async () => {
+        if (!advanceModal) return;
+        const order = advanceModal.order;
+        const nextStage = NEXT_STAGE[order.stage];
+        if (!nextStage) return;
+        setAdvanceModal(null);
+
         if (nextStage === "done") {
+            // 입고 완료: inventory에 수량 추가
             const { data: existing } = await supabase
                 .from("inventory")
                 .select("id, quantity")
@@ -138,21 +161,56 @@ export default function ProductionPage() {
                     quantity: order.quantity,
                 }]);
             }
-
             await supabase
                 .from("production_orders")
                 .update({ stage: "done", completed_at: new Date().toISOString() })
                 .eq("id", order.id);
-
-            fetchOrders();
-            return;
+        } else {
+            await supabase.from("production_orders").update({ stage: nextStage }).eq("id", order.id);
         }
-
-        await supabase.from("production_orders").update({ stage: nextStage }).eq("id", order.id);
         fetchOrders();
     };
 
-    // 봉제 공장 선택 확인
+    // 롤백 (이전 단계로) 확인 모달 열기
+    const openRollback = (order: ProductionOrder) => {
+        const prev = PREV_STAGE[order.stage];
+        if (!prev) return;
+        setRollbackModal({ order });
+    };
+
+    // 롤백 실행
+    const doRollback = async () => {
+        if (!rollbackModal) return;
+        const order = rollbackModal.order;
+        const prevStage = PREV_STAGE[order.stage];
+        if (!prevStage) return;
+        setRollbackModal(null);
+
+        // done → finishing으로 돌릴 때 inventory에서 수량 차감
+        if (order.stage === "done") {
+            const { data: existing } = await supabase
+                .from("inventory")
+                .select("id, quantity")
+                .eq("main_category", order.main_category)
+                .eq("sub_category", order.sub_category || "")
+                .eq("color", order.color || "")
+                .eq("size", order.size || "")
+                .maybeSingle();
+
+            if (existing) {
+                const newQty = Math.max(0, existing.quantity - order.quantity);
+                await supabase.from("inventory").update({ quantity: newQty }).eq("id", existing.id);
+            }
+        }
+
+        await supabase
+            .from("production_orders")
+            .update({ stage: prevStage, completed_at: null, factory_id: prevStage === "cutting" ? null : undefined })
+            .eq("id", order.id);
+        fetchOrders();
+    };
+
+
     const confirmFactory = async () => {
         if (!factoryModal || !selectedFactory) return;
         await supabase
@@ -294,15 +352,28 @@ export default function ProductionPage() {
                                         <div className={styles.cardDate}>
                                             {new Date(order.created_at).toLocaleDateString()}
                                         </div>
-                                        {nextInfo && (
-                                            <button
-                                                className={styles.advanceBtn}
-                                                style={{ background: nextInfo.color }}
-                                                onClick={() => advanceStage(order)}
-                                            >
-                                                → {lang === "ko" ? nextInfo.ko : nextInfo.es}
-                                            </button>
-                                        )}
+                                        <div className={styles.cardActions}>
+                                            {/* 이전 단계 롤백 버튼 (cutting 제외) */}
+                                            {PREV_STAGE[order.stage] && (
+                                                <button
+                                                    className={styles.rollbackBtn}
+                                                    onClick={() => openRollback(order)}
+                                                    title={lang === "ko" ? "이전 단계로" : "Retroceder"}
+                                                >
+                                                    ↩
+                                                </button>
+                                            )}
+                                            {/* 다음 단계 이동 버튼 */}
+                                            {nextInfo && (
+                                                <button
+                                                    className={styles.advanceBtn}
+                                                    style={{ background: nextInfo.color }}
+                                                    onClick={() => openAdvance(order)}
+                                                >
+                                                    → {lang === "ko" ? nextInfo.ko : nextInfo.es}
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 );
                             })}
@@ -310,6 +381,71 @@ export default function ProductionPage() {
                     )}
                 </>
             )}
+
+            {/* ─── 단계 이동 확인 모달 ─── */}
+            {advanceModal && (() => {
+                const next = NEXT_STAGE[advanceModal.order.stage];
+                const nextInfo = next ? stageInfo(next) : null;
+                return (
+                    <div className={styles.modalOverlay}>
+                        <div className={styles.modalBox}>
+                            <h3>{lang === "ko" ? "✅ 단계 이동 확인" : "✅ Confirmar avance"}</h3>
+                            <p className={styles.modalSub}>
+                                {lang === "ko"
+                                    ? `"${advanceModal.order.sub_category || advanceModal.order.main_category}" (${advanceModal.order.quantity}개)을 다음 단계로 이동하시겠습니까?`
+                                    : `¿Mover "${advanceModal.order.sub_category || advanceModal.order.main_category}" (${advanceModal.order.quantity}) al siguiente paso?`}
+                            </p>
+                            {nextInfo && (
+                                <p style={{ fontWeight: 700, color: nextInfo.color, fontSize: 15, margin: "8px 0 20px" }}>
+                                    → {lang === "ko" ? nextInfo.ko : nextInfo.es}
+                                    {next === "done" && (lang === "ko" ? " (재고에 자동 추가됩니다)" : " (se agregará al inventario)")}
+                                </p>
+                            )}
+                            <div className={styles.modalActions}>
+                                <button className={styles.btnCancel} onClick={() => setAdvanceModal(null)}>
+                                    {lang === "ko" ? "취소" : "Cancelar"}
+                                </button>
+                                <button className={styles.btnConfirm} onClick={doAdvance} style={{ background: nextInfo?.color }}>
+                                    {lang === "ko" ? "이동" : "Mover"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
+            {/* ─── 롤백 확인 모달 ─── */}
+            {rollbackModal && (() => {
+                const prev = PREV_STAGE[rollbackModal.order.stage];
+                const prevInfo = prev ? stageInfo(prev) : null;
+                return (
+                    <div className={styles.modalOverlay}>
+                        <div className={styles.modalBox}>
+                            <h3>⚠️ {lang === "ko" ? "이전 단계로 되돌리기" : "Retroceder paso"}</h3>
+                            <p className={styles.modalSub}>
+                                {lang === "ko"
+                                    ? `"${rollbackModal.order.sub_category || rollbackModal.order.main_category}" (${rollbackModal.order.quantity}개)을 이전 단계로 되돌리시겠습니까?`
+                                    : `¿Retroceder "${rollbackModal.order.sub_category || rollbackModal.order.main_category}" (${rollbackModal.order.quantity}) al paso anterior?`}
+                            </p>
+                            {prevInfo && (
+                                <p style={{ fontWeight: 700, color: prevInfo.color, fontSize: 15, margin: "8px 0 20px" }}>
+                                    ↩ {lang === "ko" ? prevInfo.ko : prevInfo.es}
+                                    {rollbackModal.order.stage === "done" && (lang === "ko" ? " (재고에서 수량이 차감됩니다)" : " (se restará del inventario)")}
+                                </p>
+                            )}
+                            <div className={styles.modalActions}>
+                                <button className={styles.btnCancel} onClick={() => setRollbackModal(null)}>
+                                    {lang === "ko" ? "취소" : "Cancelar"}
+                                </button>
+                                <button className={styles.btnConfirm} onClick={doRollback} style={{ background: "#ef4444" }}>
+                                    {lang === "ko" ? "되돌리기" : "Retroceder"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
 
             {/* ─── 탭2: 신규 등록 (배치) ─── */}
             {tab === "new" && (

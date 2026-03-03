@@ -157,6 +157,31 @@
     margin-top: auto;
 }
 
+.cardActions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    align-items: center;
+}
+
+.rollbackBtn {
+    flex-shrink: 0;
+    padding: 8px 10px;
+    border: 1.5px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.rollbackBtn:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: #ef4444;
+    color: #ef4444;
+}
+
 .advanceBtn {
     margin-top: 8px;
     padding: 8px 0;
