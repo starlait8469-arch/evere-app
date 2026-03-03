@@ -65,6 +65,12 @@ export default function DashboardHome({ inProgress, completed, totalInventory }:
             desc: lang === "ko" ? "품목별 재고 수량 확인" : "Ver cantidades por artículo",
             icon: "📦",
         },
+        {
+            href: "/dashboard/sales",
+            label: lang === "ko" ? "판매 등록" : "Registrar Venta",
+            desc: lang === "ko" ? "판매 내역 입력 및 재고 자동 차감" : "Registrar ventas y descontar stock",
+            icon: "🛒",
+        },
     ];
 
     return (

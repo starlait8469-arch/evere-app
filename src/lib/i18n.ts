@@ -46,6 +46,18 @@ export const translations = {
         save: "저장",
         search: "검색",
         noData: "데이터가 없습니다",
+        // Sales
+        salesRecord: "판매 등록",
+        onlyInStock: "재고가 있는 품목만 표시됩니다.",
+        viewAll: "전체 품목 보기",
+        noStockAvailable: "현재 판매 가능한 재고가 없습니다.",
+        size: "사이즈",
+        currentStock: "현재 재고",
+        sell: "판매",
+        confirmSale: "판매 확인",
+        saleQuestion: "개 판매 처리하시겠습니까?",
+        confirm: "확인 (재고 차감)",
+        insufficientStock: "재고 부족!",
     },
     es: {
         appName: "EVERE",
@@ -92,6 +104,18 @@ export const translations = {
         save: "Guardar",
         search: "Buscar",
         noData: "Sin datos",
+        // Sales
+        salesRecord: "Registro de Ventas",
+        onlyInStock: "Solo se muestran artículos con stock disponible.",
+        viewAll: "Ver todos",
+        noStockAvailable: "No hay stock disponible para vender.",
+        size: "Talla",
+        currentStock: "Stock act.",
+        sell: "Vender",
+        confirmSale: "Confirmar Venta",
+        saleQuestion: "uds. serán descontadas del inventario. ¿Confirmar?",
+        confirm: "Confirmar",
+        insufficientStock: "¡Stock insuficiente!",
     },
 };
 

@@ -49,8 +49,27 @@ export default function DashboardLayout({ children, username, role }: Props) {
                 </svg>
             ),
         },
+        {
+            href: "/dashboard/sales",
+            label: lang === "ko" ? "판매" : "Ventas",
+            icon: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 4v16m8-8H4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+                </svg>
+            ),
+        },
         ...(isAdmin
             ? [
+                {
+                    href: "/dashboard/sales/history",
+                    label: lang === "ko" ? "판매 장부" : "Historial Ventas",
+                    icon: (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zM14 3.5L18.5 8H14V3.5zM8 12h8m-8 4h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                    ),
+                },
                 {
                     href: "/dashboard/users",
                     label: lang === "ko" ? "직원 관리" : "Gestión de empleados",

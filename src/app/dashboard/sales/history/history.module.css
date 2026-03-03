@@ -1,0 +1,125 @@
+.page {
+    max-width: 1000px;
+}
+
+.header {
+    margin-bottom: 24px;
+}
+
+.title {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+}
+
+.subtitle {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.loading,
+.emptyCard {
+    text-align: center;
+    padding: 60px;
+    color: var(--text-muted);
+    font-size: 14px;
+    background: var(--bg-card);
+    border-radius: 14px;
+    border: 1px dashed var(--border);
+}
+
+.tableWrapper {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 600px;
+}
+
+.table th {
+    background: rgba(0, 0, 0, 0.02);
+    padding: 14px 20px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+}
+
+.table td {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    color: var(--text-primary);
+    vertical-align: middle;
+}
+
+.table tr:last-child td {
+    border-bottom: none;
+}
+
+.table tr:hover td {
+    background: rgba(0, 0, 0, 0.01);
+}
+
+.dateCell {
+    color: var(--text-secondary);
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.itemCell {
+    font-weight: 600;
+}
+
+.optionCell {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.colorTag,
+.sizeTag {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 99px;
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--primary-dark);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.sizeTag {
+    background: rgba(16, 185, 129, 0.1);
+    color: #059669;
+}
+
+.qtyCell {
+    font-weight: 800;
+    font-size: 16px;
+}
+
+.userCell {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+    .tableWrapper {
+        border-radius: 8px;
+    }
+
+    .table th,
+    .table td {
+        padding: 12px;
+    }
+}
