@@ -19,43 +19,30 @@ create policy "Users can view own profile"
   on public.profiles for select
   using (auth.uid() = id);
 
--- 4. 관리자는 모든 프로필 조회 가능
+-- 4. 관리자 여부를 체크하는 보안 함수 생성 (recursion 방지)
+-- security definer는 함수 생성자의 권한으로 실행되어 RLS를 우회하므로 재귀를 막아줍니다.
+create or replace function public.is_admin()
+returns boolean as $$
+begin
+  return exists (
+    select 1 from public.profiles
+    where id = auth.uid() and role = 'admin'
+  );
+end;
+$$ language plpgsql security definer;
+
+-- 5. 정책 적용 (is_admin() 함수 사용)
 create policy "Admins can view all profiles"
   on public.profiles for select
-  using (
-    exists (
-      select 1 from public.profiles
-      where id = auth.uid() and role = 'admin'
-    )
-  );
+  using (public.is_admin());
 
--- 5. 관리자만 직원 계정 생성 가능
 create policy "Admins can insert profiles"
   on public.profiles for insert
-  with check (
-    exists (
-      select 1 from public.profiles
-      where id = auth.uid() and role = 'admin'
-    )
-  );
+  with check (public.is_admin());
 
--- 6. 최초 관리자 생성 허용 (admin이 아무도 없을 때)
-create policy "Allow first admin creation"
-  on public.profiles for insert
-  with check (
-    not exists (select 1 from public.profiles where role = 'admin')
-    and role = 'admin'
-  );
-
--- 7. 관리자만 삭제 가능
 create policy "Admins can delete profiles"
   on public.profiles for delete
-  using (
-    exists (
-      select 1 from public.profiles
-      where id = auth.uid() and role = 'admin'
-    )
-  );
+  using (public.is_admin());
 
 -- 8. 신규 auth.users 생성 시 자동으로 profiles 행 생성
 create or replace function public.handle_new_user()
