@@ -78,8 +78,15 @@ export default function ProductionPage() {
 
     // 단계 이동 확인 모달
     const [advanceModal, setAdvanceModal] = useState<{ order: ProductionOrder } | null>(null);
+    const [advanceQty, setAdvanceQty] = useState<number>(0); // 실제 입고 수량 조정
     // 롤백 확인 모달
     const [rollbackModal, setRollbackModal] = useState<{ order: ProductionOrder } | null>(null);
+    // 봉제중 다중 선택 (plancha 일괄 발송)
+    const [selectedSewingIds, setSelectedSewingIds] = useState<Set<string>>(new Set());
+    // plancha 일괄 발송 모달
+    type PlanchaItem = { order: ProductionOrder; qty: number };
+    const [planchaModal, setPlanchaModal] = useState<PlanchaItem[] | null>(null);
+    const [planchaSlip, setPlanchaSlip] = useState<DispatchSlip | null>(null);
     // 삭제 확인 모달 (관리자 전용)
     const [deleteModal, setDeleteModal] = useState<{ order: ProductionOrder } | null>(null);
     // 수정 모달 (관리자 전용)
@@ -139,10 +146,11 @@ export default function ProductionPage() {
             return;
         }
         // 나머지 단계는 확인 모달
+        setAdvanceQty(order.quantity); // 기본값을 현재 수량으로
         setAdvanceModal({ order });
     };
 
-    // 다음 단계 이동 실행
+    // 다음 단계 이동 실행 (실제 수량 사용)
     const doAdvance = async () => {
         if (!advanceModal) return;
         const order = advanceModal.order;
@@ -150,8 +158,10 @@ export default function ProductionPage() {
         if (!nextStage) return;
         setAdvanceModal(null);
 
+        const realQty = advanceQty > 0 ? advanceQty : order.quantity;
+
         if (nextStage === "done") {
-            // 입고 완료: inventory에 수량 추가
+            // 입고 완료: inventory에 수량 추가 (advanceQty 사용)
             const { data: existing } = await supabase
                 .from("inventory")
                 .select("id, quantity")
@@ -164,7 +174,7 @@ export default function ProductionPage() {
             if (existing) {
                 await supabase
                     .from("inventory")
-                    .update({ quantity: existing.quantity + order.quantity })
+                    .update({ quantity: existing.quantity + realQty })
                     .eq("id", existing.id);
             } else {
                 await supabase.from("inventory").insert([{
@@ -173,15 +183,18 @@ export default function ProductionPage() {
                     sub_category: order.sub_category || "",
                     color: order.color || "",
                     size: order.size || "",
-                    quantity: order.quantity,
+                    quantity: realQty,
                 }]);
             }
             await supabase
                 .from("production_orders")
-                .update({ stage: "done", completed_at: new Date().toISOString() })
+                .update({ stage: "done", quantity: realQty, completed_at: new Date().toISOString() })
                 .eq("id", order.id);
         } else {
-            await supabase.from("production_orders").update({ stage: nextStage }).eq("id", order.id);
+            // 수량 변경 + 단계 업데이트
+            await supabase.from("production_orders")
+                .update({ stage: nextStage, quantity: realQty })
+                .eq("id", order.id);
         }
         fetchOrders();
     };
@@ -225,6 +238,116 @@ export default function ProductionPage() {
         fetchOrders();
     };
 
+
+    // 봉제중 카드 선택 토글 (plancha 일괄 발송용)
+    const toggleSewing = (id: string) => {
+        setSelectedSewingIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    // 선택된 봉제중 목록을 plancha 일괄 발송 모달로
+    const openBulkPlancha = () => {
+        const selected = orders.filter(o => selectedSewingIds.has(o.id) && o.stage === "sewing");
+        if (selected.length === 0) return;
+        setPlanchaModal(selected.map(o => ({ order: o, qty: o.quantity })));
+    };
+
+    // plancha 발송 실행 + 인쇄 슬립 생성
+    const doBulkPlancha = async () => {
+        if (!planchaModal) return;
+        for (const item of planchaModal) {
+            await supabase.from("production_orders")
+                .update({ stage: "finishing", quantity: item.qty })
+                .eq("id", item.order.id);
+        }
+        const date = new Date().toLocaleDateString("es-AR");
+        setPlanchaSlip({
+            factoryName: "Plancha",
+            date,
+            orders: planchaModal.map(item => ({
+                ...item.order,
+                quantity: item.qty,
+            })),
+        });
+        setPlanchaModal(null);
+        setSelectedSewingIds(new Set());
+        fetchOrders();
+    };
+
+    // plancha 출고전표 인쇄 (스페인어 고정)
+    const printPlanchaSlip = (slip: DispatchSlip) => {
+        const rows = slip.orders.map(o => `
+            <tr>
+                <td>${o.main_category}</td>
+                <td>${o.sub_category || "-"}</td>
+                <td>${o.color || "-"}</td>
+                <td>${o.size || "-"}</td>
+                <td style="text-align:center;font-weight:700;">${o.quantity}</td>
+            </tr>`).join("");
+
+        const total = slip.orders.reduce((s, o) => s + o.quantity, 0);
+        const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<title>Plancha - ${slip.date}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Helvetica Neue',Arial,sans-serif; padding:32px; color:#111; }
+  .header { border-bottom:3px solid #111; padding-bottom:16px; margin-bottom:20px; }
+  .title { font-size:22px; font-weight:800; }
+  .meta { margin-top:8px; display:flex; gap:32px; font-size:13px; color:#555; }
+  .meta strong { color:#111; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  thead tr { background:#f0f0f0; }
+  th { padding:10px 12px; text-align:left; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.3px; border-bottom:2px solid #ddd; }
+  td { padding:10px 12px; border-bottom:1px solid #eee; }
+  tfoot td { font-weight:800; font-size:14px; background:#f9f9f9; border-top:2px solid #111; }
+  .footer { margin-top:40px; display:flex; justify-content:space-between; font-size:12px; color:#777; }
+  .sign { border-top:1px solid #aaa; padding-top:6px; min-width:120px; text-align:center; color:#333; }
+  @media print { body { padding:16px; } }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="title">Envío a Plancha</div>
+    <div class="meta">
+      <span>📅 Fecha: <strong>${slip.date}</strong></span>
+      <span>Total: <strong>${slip.orders.length}</strong> orden(es)</span>
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Categoría</th><th>Subcategoría</th><th>Color</th><th>Talla</th>
+        <th style="text-align:center;">Cantidad</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+    <tfoot>
+      <tr>
+        <td colspan="4">Total</td>
+        <td style="text-align:center;">${total}</td>
+      </tr>
+    </tfoot>
+  </table>
+  <div class="footer">
+    <div class="sign">Entregado por<br/><br/>__________________</div>
+    <div class="sign">Recibido por<br/><br/>__________________</div>
+  </div>
+</body>
+</html>`;
+        const w = window.open("", "_blank");
+        if (!w) return;
+        w.document.write(html);
+        w.document.close();
+        w.focus();
+        setTimeout(() => w.print(), 300);
+    };
 
     // 관리자 전용: 공정 카드 삭제
     const doDelete = async () => {
@@ -519,6 +642,11 @@ export default function ProductionPage() {
                             filtered.find(o => o.id === id && o.stage === "cutting")
                         );
 
+                        // 봉제중 카드 선택된 개수 (plancha 일괄 발송 바)
+                        const sewingSelected = [...selectedSewingIds].filter(id =>
+                            filtered.find(o => o.id === id && o.stage === "sewing")
+                        );
+
                         return (
                             <>
                                 {/* 일괄 봉제공장 발송 바 */}
@@ -531,6 +659,17 @@ export default function ProductionPage() {
                                         <button className={styles.bulkClear} onClick={() => setSelectedIds(new Set())}>✕</button>
                                     </div>
                                 )}
+                                {/* 봉제중 → plancha 일괄 발송 바 */}
+                                {sewingSelected.length > 0 && (
+                                    <div className={styles.bulkBar} style={{ background: "#8b5cf6" }}>
+                                        <span>{lang === "ko" ? `${sewingSelected.length}개 선택됨` : `${sewingSelected.length} seleccionado(s)`}</span>
+                                        <button className={styles.bulkBtn} onClick={openBulkPlancha}>
+                                            🔧 {lang === "ko" ? "plancha로 보내기" : "Enviar a plancha"}
+                                        </button>
+                                        <button className={styles.bulkClear} onClick={() => setSelectedSewingIds(new Set())}>✕</button>
+                                    </div>
+                                )}
+
 
                                 {groups.map(group => (
                                     <div key={group.label} className={styles.group}>
@@ -544,19 +683,34 @@ export default function ProductionPage() {
                                                 const next = NEXT_STAGE[order.stage];
                                                 const nextInfo = next ? stageInfo(next) : null;
                                                 const isCutting = order.stage === "cutting";
-                                                const isChecked = selectedIds.has(order.id);
+                                                const isSewing = order.stage === "sewing";
+                                                const isChecked = selectedIds.has(order.id) || selectedSewingIds.has(order.id);
                                                 return (
                                                     <div
                                                         key={order.id}
                                                         className={`${styles.orderCard} ${isChecked ? styles.orderCardSelected : ""}`}
                                                     >
-                                                        {/* 재단중: 체크박스 */}
+                                                        {/* 재단중: 봉제공장 발송 체크박스 */}
                                                         {isCutting && (
                                                             <label className={styles.checkRow}>
                                                                 <input
                                                                     type="checkbox"
-                                                                    checked={isChecked}
+                                                                    checked={selectedIds.has(order.id)}
                                                                     onChange={() => toggleSelect(order.id)}
+                                                                />
+                                                                <span className={styles.checkLabel}>
+                                                                    {lang === "ko" ? "선택" : "Sel."}
+                                                                </span>
+                                                            </label>
+                                                        )}
+                                                        {/* 봉제중: plancha 발송 체크박스 */}
+                                                        {isSewing && (
+                                                            <label className={styles.checkRow} style={{ color: "#8b5cf6" }}>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selectedSewingIds.has(order.id)}
+                                                                    onChange={() => toggleSewing(order.id)}
+                                                                    style={{ accentColor: "#8b5cf6" }}
                                                                 />
                                                                 <span className={styles.checkLabel}>
                                                                     {lang === "ko" ? "선택" : "Sel."}
@@ -640,7 +794,99 @@ export default function ProductionPage() {
                 </div>
             )}
 
-            {/* ─── 관리자 전용: 수정 모달 ─── */}
+            {/* ─── plancha 일괄 발송 모달 (수량 조정) ─── */}
+            {planchaModal && (
+                <div className={styles.modalOverlay}>
+                    <div className={styles.modalBox} style={{ maxWidth: 480 }}>
+                        <h3>🔧 {lang === "ko" ? "plancha 발송 확인" : "Enviar a Plancha"}</h3>
+                        <p className={styles.modalSub}>
+                            {lang === "ko"
+                                ? "실제 입고 수량을 확인하고 수정해 주세요."
+                                : "Verifique y ajuste las cantidades reales recibidas."}
+                        </p>
+                        <div className={styles.planchaList}>
+                            {planchaModal.map((item, i) => (
+                                <div key={item.order.id} className={styles.planchaItem}>
+                                    <div className={styles.planchaName}>
+                                        <span>{item.order.sub_category || item.order.main_category}</span>
+                                        {item.order.color && <span className={styles.tag}>{item.order.color}</span>}
+                                        {item.order.size && <span className={styles.tag}>{item.order.size}</span>}
+                                    </div>
+                                    <div className={styles.qtyRow}>
+                                        <button className={styles.qtyBtn}
+                                            onClick={() => setPlanchaModal(m => m!.map((it, idx) => idx === i ? { ...it, qty: Math.max(1, it.qty - 1) } : it))}>−</button>
+                                        <input
+                                            type="number" min="1"
+                                            className={styles.qtyInput}
+                                            value={item.qty}
+                                            onChange={e => {
+                                                const v = Math.max(1, parseInt(e.target.value) || 1);
+                                                setPlanchaModal(m => m!.map((it, idx) => idx === i ? { ...it, qty: v } : it));
+                                            }}
+                                        />
+                                        <button className={styles.qtyBtn}
+                                            onClick={() => setPlanchaModal(m => m!.map((it, idx) => idx === i ? { ...it, qty: it.qty + 1 } : it))}>+</button>
+                                    </div>
+                                    {item.qty !== item.order.quantity && (
+                                        <span className={styles.qtyDiff}>
+                                            {lang === "ko" ? `원래 ${item.order.quantity}개` : `Orig. ${item.order.quantity}`}
+                                        </span>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                        <div className={styles.modalActions} style={{ marginTop: 16 }}>
+                            <button className={styles.btnCancel} onClick={() => setPlanchaModal(null)}>
+                                {lang === "ko" ? "취소" : "Cancelar"}
+                            </button>
+                            <button className={styles.btnConfirm} style={{ background: "#8b5cf6" }} onClick={doBulkPlancha}>
+                                🔧 {lang === "ko" ? "plancha 발송" : "Enviar"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── plancha 출고전표 인쇄 모달 ─── */}
+            {planchaSlip && (
+                <div className={styles.modalOverlay}>
+                    <div className={styles.modalBox} style={{ maxWidth: 420 }}>
+                        <div className={styles.slipIcon}>🔧</div>
+                        <h3>{lang === "ko" ? "plancha 발송 완료!" : "¡Enviado a Plancha!"}</h3>
+                        <p className={styles.modalSub}>
+                            {lang === "ko"
+                                ? `${planchaSlip.orders.length}건이 plancha로 발송되었습니다.`
+                                : `${planchaSlip.orders.length} orden(es) enviadas a plancha.`}
+                        </p>
+                        <div className={styles.slipPreview}>
+                            {planchaSlip.orders.map((o, i) => (
+                                <div key={i} className={styles.slipRow}>
+                                    <span className={styles.slipItem}>{o.sub_category || o.main_category}</span>
+                                    <div className={styles.slipTags}>
+                                        {o.color && <span className={styles.tag}>{o.color}</span>}
+                                        {o.size && <span className={styles.tag}>{o.size}</span>}
+                                    </div>
+                                    <span className={styles.slipQty}>{o.quantity}</span>
+                                </div>
+                            ))}
+                            <div className={styles.slipTotal}>
+                                <span>{lang === "ko" ? "합계" : "Total"}</span>
+                                <span className={styles.slipQty}>{planchaSlip.orders.reduce((s, o) => s + o.quantity, 0)}</span>
+                            </div>
+                        </div>
+                        <div className={styles.modalActions} style={{ marginTop: 16 }}>
+                            <button className={styles.btnCancel} onClick={() => setPlanchaSlip(null)}>
+                                {lang === "ko" ? "닫기" : "Cerrar"}
+                            </button>
+                            <button className={styles.btnPrint} onClick={() => { printPlanchaSlip(planchaSlip); setPlanchaSlip(null); }}>
+                                🖨️ {lang === "ko" ? "plancha 전표 인쇄" : "Imprimir plancha"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+
             {editModal && (
                 <div className={styles.modalOverlay}>
                     <div className={styles.modalBox} style={{ maxWidth: 420 }}>
@@ -695,15 +941,39 @@ export default function ProductionPage() {
                             <h3>{lang === "ko" ? "✅ 단계 이동 확인" : "✅ Confirmar avance"}</h3>
                             <p className={styles.modalSub}>
                                 {lang === "ko"
-                                    ? `"${advanceModal.order.sub_category || advanceModal.order.main_category}" (${advanceModal.order.quantity}개)을 다음 단계로 이동하시겠습니까?`
-                                    : `¿Mover "${advanceModal.order.sub_category || advanceModal.order.main_category}" (${advanceModal.order.quantity}) al siguiente paso?`}
+                                    ? `"${advanceModal.order.sub_category || advanceModal.order.main_category}" 다음 단계로 이동합니다.`
+                                    : `Mover "${advanceModal.order.sub_category || advanceModal.order.main_category}" al siguiente paso.`}
                             </p>
                             {nextInfo && (
-                                <p style={{ fontWeight: 700, color: nextInfo.color, fontSize: 15, margin: "8px 0 20px" }}>
+                                <p style={{ fontWeight: 700, color: nextInfo.color, fontSize: 15, margin: "6px 0 14px" }}>
                                     → {lang === "ko" ? nextInfo.ko : nextInfo.es}
                                     {next === "done" && (lang === "ko" ? " (재고에 자동 추가됩니다)" : " (se agregará al inventario)")}
                                 </p>
                             )}
+                            {/* 실제 입고 수량 조정 */}
+                            <div className={styles.qtyAdjust}>
+                                <label className={styles.qtyLabel}>
+                                    {lang === "ko" ? "📦 실제 입고 수량" : "📦 Cantidad real recibida"}
+                                </label>
+                                <div className={styles.qtyRow}>
+                                    <button className={styles.qtyBtn} onClick={() => setAdvanceQty(q => Math.max(1, q - 1))}>−</button>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        className={styles.qtyInput}
+                                        value={advanceQty}
+                                        onChange={e => setAdvanceQty(Math.max(1, parseInt(e.target.value) || 1))}
+                                    />
+                                    <button className={styles.qtyBtn} onClick={() => setAdvanceQty(q => q + 1)}>+</button>
+                                </div>
+                                {advanceQty !== advanceModal.order.quantity && (
+                                    <p className={styles.qtyDiff}>
+                                        {lang === "ko"
+                                            ? `원래 수량 ${advanceModal.order.quantity}개 → 실제 ${advanceQty}개`
+                                            : `Original: ${advanceModal.order.quantity} → Real: ${advanceQty}`}
+                                    </p>
+                                )}
+                            </div>
                             <div className={styles.modalActions}>
                                 <button className={styles.btnCancel} onClick={() => setAdvanceModal(null)}>
                                     {lang === "ko" ? "취소" : "Cancelar"}
@@ -716,6 +986,7 @@ export default function ProductionPage() {
                     </div>
                 );
             })()}
+
 
             {/* ─── 롤백 확인 모달 ─── */}
             {rollbackModal && (() => {

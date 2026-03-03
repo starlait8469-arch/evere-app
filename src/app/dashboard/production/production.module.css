@@ -784,3 +784,105 @@
 .btnPrint:hover {
     opacity: 0.85;
 }
+
+/* ─── Quantity Adjustment ─── */
+.qtyAdjust {
+    background: var(--bg-muted);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+}
+
+.qtyLabel {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 10px;
+}
+
+.qtyRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.qtyBtn {
+    width: 36px;
+    height: 36px;
+    border: 1.5px solid var(--border);
+    background: var(--bg-card);
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+
+.qtyBtn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.qtyInput {
+    flex: 1;
+    text-align: center;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text-primary);
+    border: 1.5px solid var(--primary);
+    border-radius: 8px;
+    padding: 6px;
+    background: var(--bg-main);
+}
+
+.qtyInput:focus {
+    outline: none;
+}
+
+.qtyDiff {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #f59e0b;
+    font-weight: 600;
+}
+
+/* ─── Plancha Modal List ─── */
+.planchaList {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 12px 0;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.planchaItem {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.planchaItem:last-child {
+    border-bottom: none;
+}
+
+.planchaName {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    flex-wrap: wrap;
+}
