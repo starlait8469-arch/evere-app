@@ -251,6 +251,38 @@
     color: #059669;
 }
 
+/* ─── Date Group Header Row ─── */
+.dateGroupRow {
+    background: var(--bg-muted) !important;
+    border-top: 2px solid var(--border);
+}
+
+.dateGroupCell {
+    padding: 10px 14px !important;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.dateGroupLabel {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.2px;
+}
+
+.dateGroupSummary {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.dayLoss {
+    color: #ef4444;
+    font-weight: 800;
+}
+
 .empty {
     text-align: center;
     padding: 60px;

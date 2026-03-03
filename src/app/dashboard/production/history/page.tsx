@@ -190,65 +190,98 @@ export default function ProductionHistoryPage() {
                 <div className={styles.empty}>
                     {lang === "ko" ? "내역이 없습니다." : "No hay registros."}
                 </div>
-            ) : (
-                <div className={styles.tableWrap}>
-                    <table className={styles.table}>
-                        <thead>
-                            <tr>
-                                <th>{lang === "ko" ? "완료일" : "Fecha"}</th>
-                                <th>{lang === "ko" ? "분류" : "Categoría"}</th>
-                                <th>{lang === "ko" ? "서브" : "Sub"}</th>
-                                <th>{lang === "ko" ? "색상" : "Color"}</th>
-                                <th>{lang === "ko" ? "사이즈" : "Talla"}</th>
-                                <th>{lang === "ko" ? "봉제공장" : "Taller"}</th>
-                                <th className={styles.thNum}>{lang === "ko" ? "재단" : "Corte"}</th>
-                                <th className={styles.thNum}>🪡 {lang === "ko" ? "봉제입고" : "Cos."}</th>
-                                <th className={styles.thNum}>🔧 {lang === "ko" ? "plancha입고" : "Plan."}</th>
-                                <th className={styles.thNum}>{lang === "ko" ? "손실" : "Pérd."}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filtered.map(o => {
-                                const cut = o.original_qty ?? o.quantity;
-                                const sewing = o.sewing_returned_qty ?? o.quantity;
-                                const final = o.quantity;
-                                const sewLoss = Math.max(0, cut - sewing);
-                                const plLoss = Math.max(0, sewing - final);
-                                const totalLoss = sewLoss + plLoss;
-                                const hasLoss = totalLoss > 0;
-                                return (
-                                    <tr key={o.id} className={hasLoss ? styles.rowLoss : styles.rowOk}>
-                                        <td className={styles.dateCell}>
-                                            {o.completed_at
-                                                ? new Date(o.completed_at).toLocaleDateString()
-                                                : new Date(o.created_at).toLocaleDateString()}
-                                        </td>
-                                        <td>{o.main_category}</td>
-                                        <td>{o.sub_category || "—"}</td>
-                                        <td>{o.color || "—"}</td>
-                                        <td>{o.size || "—"}</td>
-                                        <td>{o.sewing_factories?.name || "—"}</td>
-                                        <td className={styles.numCell}>{cut}</td>
-                                        <td className={styles.numCell}>
-                                            <span className={sewLoss > 0 ? styles.numLoss : ""}>{sewing}</span>
-                                            {sewLoss > 0 && <span className={styles.lossTag}>−{sewLoss}</span>}
-                                        </td>
-                                        <td className={styles.numCell}>
-                                            <span className={plLoss > 0 ? styles.numLoss : ""}>{final}</span>
-                                            {plLoss > 0 && <span className={styles.lossTagPurple}>−{plLoss}</span>}
-                                        </td>
-                                        <td className={styles.numCell}>
-                                            {totalLoss > 0
-                                                ? <span className={styles.totalLoss}>−{totalLoss}</span>
-                                                : <span className={styles.totalOk}>✓</span>}
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+            ) : (() => {
+                // 날짜별 그룹화
+                const groups = new Map<string, typeof filtered>();
+                filtered.forEach(o => {
+                    const dateKey = o.completed_at
+                        ? new Date(o.completed_at).toLocaleDateString("es-AR", { weekday: "short", year: "numeric", month: "short", day: "numeric" })
+                        : new Date(o.created_at).toLocaleDateString("es-AR", { weekday: "short", year: "numeric", month: "short", day: "numeric" });
+                    if (!groups.has(dateKey)) groups.set(dateKey, []);
+                    groups.get(dateKey)!.push(o);
+                });
+
+                return (
+                    <div className={styles.tableWrap}>
+                        <table className={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th>{lang === "ko" ? "분류" : "Categoría"}</th>
+                                    <th>{lang === "ko" ? "서브" : "Sub"}</th>
+                                    <th>{lang === "ko" ? "색상" : "Color"}</th>
+                                    <th>{lang === "ko" ? "사이즈" : "Talla"}</th>
+                                    <th>{lang === "ko" ? "봉제공장" : "Taller"}</th>
+                                    <th className={styles.thNum}>{lang === "ko" ? "재단" : "Corte"}</th>
+                                    <th className={styles.thNum}>🪡 {lang === "ko" ? "봉제입고" : "Cos."}</th>
+                                    <th className={styles.thNum}>🔧 {lang === "ko" ? "plancha입고" : "Plan."}</th>
+                                    <th className={styles.thNum}>{lang === "ko" ? "손실" : "Pérd."}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {Array.from(groups.entries()).map(([dateKey, dayOrders]) => {
+                                    const dayCut = dayOrders.reduce((s, o) => s + (o.original_qty ?? o.quantity), 0);
+                                    const dayFinal = dayOrders.reduce((s, o) => s + o.quantity, 0);
+                                    const dayLoss = dayCut - dayFinal;
+                                    return (
+                                        <>
+                                            {/* 날짜 구분 헤더 행 */}
+                                            <tr key={`date-${dateKey}`} className={styles.dateGroupRow}>
+                                                <td colSpan={9} className={styles.dateGroupCell}>
+                                                    <span className={styles.dateGroupLabel}>📅 {dateKey}</span>
+                                                    <span className={styles.dateGroupSummary}>
+                                                        {dayOrders.length}{lang === "ko" ? "건" : " ord."}
+                                                        {" · "}
+                                                        {lang === "ko" ? "재단" : "Corte"} {dayCut}
+                                                        {" → "}
+                                                        {lang === "ko" ? "최종" : "Final"} {dayFinal}
+                                                        {dayLoss > 0 && (
+                                                            <span className={styles.dayLoss}> −{dayLoss}</span>
+                                                        )}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            {/* 해당 날짜의 주문들 */}
+                                            {dayOrders.map(o => {
+                                                const cut = o.original_qty ?? o.quantity;
+                                                const sewing = o.sewing_returned_qty ?? o.quantity;
+                                                const final = o.quantity;
+                                                const sewLoss = Math.max(0, cut - sewing);
+                                                const plLoss = Math.max(0, sewing - final);
+                                                const totalLoss = sewLoss + plLoss;
+                                                const hasLoss = totalLoss > 0;
+                                                return (
+                                                    <tr key={o.id} className={hasLoss ? styles.rowLoss : styles.rowOk}>
+                                                        <td>{o.main_category}</td>
+                                                        <td>{o.sub_category || "—"}</td>
+                                                        <td>{o.color || "—"}</td>
+                                                        <td>{o.size || "—"}</td>
+                                                        <td>{o.sewing_factories?.name || "—"}</td>
+                                                        <td className={styles.numCell}>{cut}</td>
+                                                        <td className={styles.numCell}>
+                                                            <span className={sewLoss > 0 ? styles.numLoss : ""}>{sewing}</span>
+                                                            {sewLoss > 0 && <span className={styles.lossTag}>−{sewLoss}</span>}
+                                                        </td>
+                                                        <td className={styles.numCell}>
+                                                            <span className={plLoss > 0 ? styles.numLoss : ""}>{final}</span>
+                                                            {plLoss > 0 && <span className={styles.lossTagPurple}>−{plLoss}</span>}
+                                                        </td>
+                                                        <td className={styles.numCell}>
+                                                            {totalLoss > 0
+                                                                ? <span className={styles.totalLoss}>−{totalLoss}</span>
+                                                                : <span className={styles.totalOk}>✓</span>}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                );
+            })()}
         </div>
     );
 }
+
