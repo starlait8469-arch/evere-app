@@ -45,9 +45,11 @@ export default function SalesHistoryPage() {
                 .from("profiles")
                 .select("role")
                 .eq("id", session.user.id)
-                .single();
+                .maybeSingle();
 
-            if (!profile || profile.role !== "admin") {
+            const role = profile?.role ?? session.user.user_metadata?.role;
+
+            if (role !== "admin") {
                 // 직원은 접근 불가 -> 일반 판매 화면이나 대시보드로 튕김
                 router.replace("/dashboard/sales");
                 return;
