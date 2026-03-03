@@ -89,12 +89,24 @@ export default function InventoryPage() {
                 if (cA !== cB) return cA.localeCompare(cB);
             }
 
-            // 3. 사이즈 오름차순
-            const sizeA = parseInt(a.size);
-            const sizeB = parseInt(b.size);
-            if (!isNaN(sizeA) && !isNaN(sizeB)) return sizeA - sizeB;
+            // 3. 사이즈 정렬 (문자열 사이즈 우선)
+            const sizeOrder = ["s", "m", "l", "xl", "xxl"];
+            const sA = (a.size || "").toLowerCase();
+            const sB = (b.size || "").toLowerCase();
 
-            return (a.size || "").localeCompare(b.size || "");
+            const idxA = sizeOrder.indexOf(sA);
+            const idxB = sizeOrder.indexOf(sB);
+
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            if (idxA !== -1) return -1; // S, M, L 등이 숫자보다 앞에 오거나 뒤에 오게 할 수 있음. 보통 먼저 오도록.
+            if (idxB !== -1) return 1;
+
+            // 4. 숫자 사이즈 오름차순
+            const numA = parseInt(a.size);
+            const numB = parseInt(b.size);
+            if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+
+            return sA.localeCompare(sB);
         });
 
         setItems(sortedData);
