@@ -1,0 +1,262 @@
+.page {
+    max-width: 1200px;
+}
+
+.header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 24px;
+}
+
+.title {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+}
+
+.subtitle {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.refreshBtn {
+    padding: 8px 12px;
+    border: 1.5px solid var(--border);
+    background: var(--bg-card);
+    border-radius: 8px;
+    font-size: 18px;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+
+.refreshBtn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* ─── Stats ─── */
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.statCard {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: box-shadow 0.2s;
+}
+
+.statCard:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.07);
+}
+
+.statDanger {
+    border-color: rgba(239, 68, 68, 0.4);
+    background: rgba(239, 68, 68, 0.04);
+}
+
+.statWarn {
+    border-color: rgba(139, 92, 246, 0.4);
+    background: rgba(139, 92, 246, 0.04);
+}
+
+.statLabel {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.statValue {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+}
+
+.statGreen {
+    color: #059669;
+}
+
+/* ─── Filter ─── */
+.filterBar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 18px;
+}
+
+.searchInput {
+    padding: 8px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--bg-main);
+    color: var(--text-primary);
+    min-width: 180px;
+}
+
+.searchInput:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.filterBtns {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.filterBtn {
+    padding: 6px 12px;
+    border: 1.5px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.filterBtn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.filterActive {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+/* ─── Table ─── */
+.tableWrap {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.table thead tr {
+    background: var(--bg-muted);
+    border-bottom: 2px solid var(--border);
+}
+
+.table th {
+    padding: 12px 14px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+}
+
+.thNum {
+    text-align: right !important;
+}
+
+.table td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.rowLoss {
+    background: rgba(239, 68, 68, 0.025);
+}
+
+.rowOk {
+    background: transparent;
+}
+
+.dateCell {
+    color: var(--text-muted) !important;
+    font-size: 12px !important;
+}
+
+.numCell {
+    text-align: right;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+}
+
+.table td.numCell {
+    text-align: right;
+}
+
+.numLoss {
+    color: var(--text-muted);
+    text-decoration: line-through;
+}
+
+.lossTag {
+    font-size: 11px;
+    font-weight: 700;
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+    padding: 1px 6px;
+    border-radius: 99px;
+}
+
+.lossTagPurple {
+    font-size: 11px;
+    font-weight: 700;
+    background: rgba(139, 92, 246, 0.12);
+    color: #8b5cf6;
+    padding: 1px 6px;
+    border-radius: 99px;
+}
+
+.totalLoss {
+    font-size: 13px;
+    font-weight: 800;
+    color: #ef4444;
+}
+
+.totalOk {
+    font-size: 13px;
+    font-weight: 700;
+    color: #059669;
+}
+
+.empty {
+    text-align: center;
+    padding: 60px;
+    color: var(--text-muted);
+    font-size: 14px;
+    background: var(--bg-card);
+    border-radius: 14px;
+    border: 1px dashed var(--border);
+}
