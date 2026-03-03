@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "./factories.module.css";
 
+
 type Factory = {
     id: string;
     name: string;
@@ -38,26 +39,45 @@ export default function FactoriesPage() {
 
     const fetchFactories = async () => {
         setLoading(true);
-        const { data } = await supabase.from("sewing_factories").select("*").order("name");
-        if (data) setFactories(data);
+        const res = await fetch("/api/factories");
+        if (res.ok) {
+            const data = await res.json();
+            setFactories(data);
+        }
         setLoading(false);
     };
 
     const addFactory = async () => {
         if (!newName.trim()) return;
         setSaving(true);
-        await supabase.from("sewing_factories").insert([{ name: newName.trim(), notes: newNotes.trim() || null }]);
-        setNewName("");
-        setNewNotes("");
+        const res = await fetch("/api/factories", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: newName.trim(), notes: newNotes.trim() || null }),
+        });
+        if (res.ok) {
+            setNewName("");
+            setNewNotes("");
+            fetchFactories();
+        }
         setSaving(false);
-        fetchFactories();
     };
 
     const deleteFactory = async (id: string) => {
         if (!confirm(lang === "ko" ? "삭제하시겠습니까?" : "¿Eliminar este taller?")) return;
-        await supabase.from("sewing_factories").delete().eq("id", id);
-        fetchFactories();
+        const res = await fetch("/api/factories", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id }),
+        });
+        if (res.ok) {
+            fetchFactories();
+        } else {
+            const err = await res.json().catch(() => ({}));
+            alert("Error: " + (err.error || "Unknown"));
+        }
     };
+
 
     return (
         <div className={styles.page}>
