@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/context/LanguageContext";
@@ -23,13 +23,36 @@ type OrderRow = {
     quantity: string;
 };
 
+type StoreOrderItem = {
+    id: string;
+    order_id: string;
+    main_category: string;
+    sub_category: string;
+    color: string;
+    size: string;
+    quantity: number;
+};
+
+type StoreOrder = {
+    id: string;
+    created_at: string;
+    customer_name: string | null;
+    note: string | null;
+    total_qty: number;
+    status: string;
+    store_order_items: StoreOrderItem[];
+};
+
 const emptyRow = (): OrderRow => ({
-    main_category: "",
-    sub_category: "",
-    color: "",
-    size: "",
-    quantity: "",
+    main_category: "", sub_category: "", color: "", size: "", quantity: "",
 });
+
+const STATUS_LABELS: Record<string, { ko: string; es: string; color: string }> = {
+    pending: { ko: "주문접수", es: "Pendiente", color: "#f59e0b" },
+    ready: { ko: "납품준비완료", es: "Listo", color: "#059669" },
+    delivered: { ko: "납품완료", es: "Entregado", color: "#6366f1" },
+    cancelled: { ko: "취소", es: "Cancelado", color: "#ef4444" },
+};
 
 export default function OrdersPage() {
     const { lang } = useLanguage();
@@ -38,12 +61,24 @@ export default function OrdersPage() {
 
     const [isAdmin, setIsAdmin] = useState(false);
     const [token, setToken] = useState("");
+    const [tab, setTab] = useState<"list" | "new">("list");
+
+    // Inventory
     const [inventory, setInventory] = useState<InventoryItem[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [inventoryLoading, setInventoryLoading] = useState(true);
+
+    // Orders list
+    const [orders, setOrders] = useState<StoreOrder[]>([]);
+    const [ordersLoading, setOrdersLoading] = useState(true);
+    const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [filterStatus, setFilterStatus] = useState<string>("all");
+
+    // New order form
     const [rows, setRows] = useState<OrderRow[]>([emptyRow()]);
+    const [customerName, setCustomerName] = useState("");
     const [note, setNote] = useState("");
     const [submitting, setSubmitting] = useState(false);
-    const [slipData, setSlipData] = useState<{ orderId: string; items: OrderRow[]; date: string } | null>(null);
+    const [slipData, setSlipData] = useState<{ orderId: string; items: OrderRow[]; date: string; customer: string } | null>(null);
 
     useEffect(() => {
         const init = async () => {
@@ -53,64 +88,65 @@ export default function OrdersPage() {
             setIsAdmin(true);
             setToken(session.access_token);
             fetchInventory();
+            fetchOrders(session.access_token);
         };
         init();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchInventory = async () => {
-        setLoading(true);
+        setInventoryLoading(true);
         const { data } = await supabase
-            .from("inventory")
-            .select("*")
-            .gt("quantity", 0)
+            .from("inventory").select("*").gt("quantity", 0)
             .order("main_category").order("sub_category").order("color");
         setInventory((data as InventoryItem[]) || []);
-        setLoading(false);
+        setInventoryLoading(false);
     };
 
-    // ─── Derived option lists ───
+    const fetchOrders = useCallback(async (tkn?: string) => {
+        setOrdersLoading(true);
+        const t = tkn || token;
+        const res = await fetch("/api/orders", {
+            headers: { Authorization: `Bearer ${t}` },
+        });
+        const data = await res.json();
+        setOrders(Array.isArray(data) ? data : []);
+        setOrdersLoading(false);
+    }, [token]);
+
+    // ─── Status update ───
+    const updateStatus = async (orderId: string, status: string) => {
+        await fetch("/api/orders", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ orderId, status }),
+        });
+        fetchOrders();
+        if (status === "ready") fetchInventory();
+    };
+
+    // ─── Inventory-derived options ───
     const mainCats = [...new Set(inventory.map(i => i.main_category).filter(Boolean))];
-
-    const subCatsFor = (main: string) =>
-        [...new Set(inventory.filter(i => i.main_category === main).map(i => i.sub_category).filter(Boolean))];
-
-    const colorsFor = (main: string, sub: string) =>
-        [...new Set(inventory.filter(i => i.main_category === main && i.sub_category === sub).map(i => i.color).filter(Boolean))];
-
-    const sizesFor = (main: string, sub: string, color: string) =>
-        [...new Set(inventory.filter(i => i.main_category === main && i.sub_category === sub && i.color === color).map(i => i.size).filter(Boolean))];
-
-    const maxQtyFor = (row: OrderRow) => {
-        const item = inventory.find(i =>
-            i.main_category === row.main_category &&
-            i.sub_category === row.sub_category &&
-            i.color === row.color &&
-            i.size === row.size
-        );
-        return item?.quantity ?? 0;
-    };
+    const subCatsFor = (main: string) => [...new Set(inventory.filter(i => i.main_category === main).map(i => i.sub_category).filter(Boolean))];
+    const colorsFor = (main: string, sub: string) => [...new Set(inventory.filter(i => i.main_category === main && i.sub_category === sub).map(i => i.color).filter(Boolean))];
+    const sizesFor = (main: string, sub: string, color: string) => [...new Set(inventory.filter(i => i.main_category === main && i.sub_category === sub && i.color === color).map(i => i.size).filter(Boolean))];
+    const maxQtyFor = (row: OrderRow) => inventory.find(i => i.main_category === row.main_category && i.sub_category === row.sub_category && i.color === row.color && i.size === row.size)?.quantity ?? 0;
 
     // ─── Row updates ───
     const updateRow = (idx: number, field: keyof OrderRow, value: string) => {
         setRows(prev => prev.map((r, i) => {
             if (i !== idx) return r;
             const updated = { ...r, [field]: value };
-            // 상위 필드 바뀌면 하위 필드 초기화
             if (field === "main_category") { updated.sub_category = ""; updated.color = ""; updated.size = ""; }
             if (field === "sub_category") { updated.color = ""; updated.size = ""; }
             if (field === "color") { updated.size = ""; }
             return updated;
         }));
     };
-
     const addRow = () => setRows(prev => [...prev, emptyRow()]);
     const removeRow = (idx: number) => setRows(prev => prev.filter((_, i) => i !== idx));
 
-    const validRows = rows.filter(r =>
-        r.main_category && r.sub_category && r.quantity && parseInt(r.quantity) > 0
-    );
-
+    const validRows = rows.filter(r => r.main_category && r.sub_category && r.quantity && parseInt(r.quantity) > 0);
     const totalQty = validRows.reduce((s, r) => s + parseInt(r.quantity || "0"), 0);
 
     // ─── Submit ───
@@ -118,28 +154,27 @@ export default function OrdersPage() {
         if (validRows.length === 0) return;
         setSubmitting(true);
         const items = validRows.map(r => ({
-            main_category: r.main_category,
-            sub_category: r.sub_category,
-            color: r.color,
-            size: r.size,
-            quantity: parseInt(r.quantity),
+            main_category: r.main_category, sub_category: r.sub_category,
+            color: r.color, size: r.size, quantity: parseInt(r.quantity),
         }));
         const res = await fetch("/api/orders", {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ items, note }),
+            body: JSON.stringify({ items, note, customer_name: customerName }),
         });
         const json = await res.json();
         setSubmitting(false);
         if (!res.ok) { alert(json.error || "Error"); return; }
-        setSlipData({ orderId: json.orderId, items: [...validRows], date: new Date().toLocaleDateString("es-AR") });
+        setSlipData({ orderId: json.orderId, items: [...validRows], date: new Date().toLocaleDateString("es-AR"), customer: customerName });
         setRows([emptyRow()]);
+        setCustomerName("");
         setNote("");
+        fetchOrders();
     };
 
     // ─── Print ───
     const printOrder = (data: NonNullable<typeof slipData>) => {
-        const rows = data.items.map(item => `
+        const rowsHtml = data.items.map(item => `
             <tr>
                 <td class="check"><span class="box">□</span></td>
                 <td>${item.main_category}</td>
@@ -150,15 +185,14 @@ export default function OrdersPage() {
             </tr>`).join("");
         const total = data.items.reduce((s, i) => s + parseInt(String(i.quantity)), 0);
         const html = `<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="UTF-8"/>
+<html lang="es"><head><meta charset="UTF-8"/>
 <title>Pedido</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:'Helvetica Neue',Arial,sans-serif; padding:32px; color:#111; }
   .header { border-bottom:3px solid #111; padding-bottom:16px; margin-bottom:20px; }
   .title { font-size:22px; font-weight:800; letter-spacing:-0.5px; }
-  .meta { margin-top:8px; display:flex; gap:32px; font-size:13px; color:#555; }
+  .meta { margin-top:8px; display:flex; gap:32px; font-size:13px; color:#555; flex-wrap:wrap; }
   .meta strong { color:#111; }
   table { width:100%; border-collapse:collapse; font-size:14px; }
   thead tr { background:#f0f0f0; }
@@ -170,36 +204,21 @@ export default function OrdersPage() {
   .footer { margin-top:40px; display:flex; justify-content:space-between; }
   .sign { border-top:1px solid #aaa; padding-top:6px; min-width:120px; text-align:center; font-size:12px; color:#555; }
   @media print { body { padding:16px; } }
-</style>
-</head>
+</style></head>
 <body>
   <div class="header">
     <div class="title">Pedido</div>
     <div class="meta">
       <span>Fecha: <strong>${data.date}</strong></span>
       <span>N°: <strong>${data.orderId.slice(0, 8).toUpperCase()}</strong></span>
+      ${data.customer ? `<span>Cliente: <strong>${data.customer}</strong></span>` : ""}
       <span>Total: <strong>${total}</strong> uds.</span>
     </div>
   </div>
   <table>
-    <thead>
-      <tr>
-        <th style="width:36px;">✓</th>
-        <th>Categoría</th>
-        <th>Subcategoría</th>
-        <th>Color</th>
-        <th>Talla</th>
-        <th style="text-align:center;">Cantidad</th>
-      </tr>
-    </thead>
-    <tbody>${rows}</tbody>
-    <tfoot>
-      <tr>
-        <td></td>
-        <td colspan="4">Total</td>
-        <td style="text-align:center;">${total}</td>
-      </tr>
-    </tfoot>
+    <thead><tr><th style="width:36px;">✓</th><th>Categoría</th><th>Subcategoría</th><th>Color</th><th>Talla</th><th style="text-align:center;">Cantidad</th></tr></thead>
+    <tbody>${rowsHtml}</tbody>
+    <tfoot><tr><td></td><td colspan="4">Total</td><td style="text-align:center;">${total}</td></tr></tfoot>
   </table>
   <div class="footer">
     <div class="sign">Preparado por<br/><br/>__________________</div>
@@ -217,22 +236,149 @@ export default function OrdersPage() {
 
     if (!isAdmin) return null;
 
+    const filteredOrders = filterStatus === "all"
+        ? orders
+        : orders.filter(o => o.status === filterStatus);
+
     return (
         <div className={styles.page}>
-            <div className={styles.header}>
-                <div>
-                    <h1 className={styles.title}>🧾 {lang === "ko" ? "가게 주문" : "Pedidos"}</h1>
-                    <p className={styles.subtitle}>
-                        {lang === "ko" ? "항목을 선택하고 수량을 입력해 주문서를 작성하세요" : "Seleccione productos e ingrese cantidades para crear un pedido"}
-                    </p>
+            <div className={styles.pageHeader}>
+                <h1 className={styles.title}>🧾 {lang === "ko" ? "가게 주문" : "Pedidos"}</h1>
+                <div className={styles.tabs}>
+                    <button className={`${styles.tab} ${tab === "list" ? styles.tabActive : ""}`} onClick={() => setTab("list")}>
+                        {lang === "ko" ? "📋 주문 목록" : "📋 Lista"}
+                    </button>
+                    <button className={`${styles.tab} ${tab === "new" ? styles.tabActive : ""}`} onClick={() => setTab("new")}>
+                        {lang === "ko" ? "＋ 새 주문" : "＋ Nuevo"}
+                    </button>
                 </div>
             </div>
 
-            {loading ? (
-                <div className={styles.empty}>Loading...</div>
-            ) : (
+            {/* ═══ TAB: 주문 목록 ═══ */}
+            {tab === "list" && (
+                <div className={styles.listSection}>
+                    {/* 필터 */}
+                    <div className={styles.filterBar}>
+                        {["all", "pending", "ready", "delivered", "cancelled"].map(s => (
+                            <button key={s}
+                                className={`${styles.filterBtn} ${filterStatus === s ? styles.filterActive : ""}`}
+                                onClick={() => setFilterStatus(s)}>
+                                {s === "all"
+                                    ? (lang === "ko" ? "전체" : "Todos")
+                                    : (lang === "ko" ? STATUS_LABELS[s]?.ko : STATUS_LABELS[s]?.es)}
+                            </button>
+                        ))}
+                        <button className={styles.refreshBtn} onClick={() => fetchOrders()}>↺</button>
+                    </div>
+
+                    {ordersLoading ? (
+                        <div className={styles.empty}>Loading...</div>
+                    ) : filteredOrders.length === 0 ? (
+                        <div className={styles.empty}>{lang === "ko" ? "주문 없음" : "Sin pedidos"}</div>
+                    ) : (
+                        <div className={styles.orderCards}>
+                            {filteredOrders.map(order => {
+                                const st = STATUS_LABELS[order.status] || STATUS_LABELS.pending;
+                                const isExpanded = expandedId === order.id;
+                                return (
+                                    <div key={order.id} className={styles.orderCard}>
+                                        <div className={styles.orderCardTop} onClick={() => setExpandedId(isExpanded ? null : order.id)}>
+                                            <div className={styles.orderMeta}>
+                                                {order.customer_name && (
+                                                    <span className={styles.customerName}>👤 {order.customer_name}</span>
+                                                )}
+                                                <span className={styles.orderId}>#{order.id.slice(0, 8).toUpperCase()}</span>
+                                                <span className={styles.orderDate}>{new Date(order.created_at).toLocaleDateString()}</span>
+                                            </div>
+                                            <div className={styles.orderRight}>
+                                                <span className={styles.orderQty}>{order.total_qty} {lang === "ko" ? "개" : "uds."}</span>
+                                                <span className={styles.statusBadge} style={{ background: st.color + "20", color: st.color, border: `1px solid ${st.color}40` }}>
+                                                    {lang === "ko" ? st.ko : st.es}
+                                                </span>
+                                                <span className={styles.chevron}>{isExpanded ? "▲" : "▼"}</span>
+                                            </div>
+                                        </div>
+
+                                        {isExpanded && (
+                                            <div className={styles.orderDetail}>
+                                                {/* 아이템 목록 */}
+                                                <div className={styles.itemList}>
+                                                    {order.store_order_items?.map(item => (
+                                                        <div key={item.id} className={styles.itemRow}>
+                                                            <span className={styles.itemName}>{item.sub_category || item.main_category}</span>
+                                                            <div className={styles.itemTags}>
+                                                                {item.color && <span className={styles.tag}>{item.color}</span>}
+                                                                {item.size && <span className={styles.tag}>{item.size}</span>}
+                                                            </div>
+                                                            <span className={styles.itemQty}>× {item.quantity}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                {order.note && <p className={styles.orderNote}>📝 {order.note}</p>}
+
+                                                {/* 액션 버튼 */}
+                                                <div className={styles.orderActions}>
+                                                    {order.status === "pending" && (
+                                                        <>
+                                                            <button className={styles.actionBtn} style={{ background: "#059669" }}
+                                                                onClick={() => updateStatus(order.id, "ready")}>
+                                                                ✅ {lang === "ko" ? "납품준비완료" : "Listo — descontar stock"}
+                                                            </button>
+                                                            <button className={styles.actionBtnOutline} style={{ borderColor: "#ef4444", color: "#ef4444" }}
+                                                                onClick={() => updateStatus(order.id, "cancelled")}>
+                                                                {lang === "ko" ? "취소" : "Cancelar"}
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                    {order.status === "ready" && (
+                                                        <button className={styles.actionBtn} style={{ background: "#6366f1" }}
+                                                            onClick={() => updateStatus(order.id, "delivered")}>
+                                                            🚚 {lang === "ko" ? "납품완료" : "Entregado"}
+                                                        </button>
+                                                    )}
+                                                    <button className={styles.actionBtnOutline}
+                                                        onClick={() => {
+                                                            const items = order.store_order_items.map(i => ({
+                                                                main_category: i.main_category, sub_category: i.sub_category,
+                                                                color: i.color, size: i.size, quantity: String(i.quantity),
+                                                            }));
+                                                            printOrder({ orderId: order.id, items, date: new Date(order.created_at).toLocaleDateString("es-AR"), customer: order.customer_name || "" });
+                                                        }}>
+                                                        🖨️ {lang === "ko" ? "재인쇄" : "Reimprimir"}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ═══ TAB: 새 주문 ═══ */}
+            {tab === "new" && (
                 <div className={styles.formCard}>
-                    {/* ─── Rows ─── */}
+                    {/* 고객명 + 메모 */}
+                    <div className={styles.topInputs}>
+                        <div className={styles.inputGroup}>
+                            <label className={styles.inputLabel}>👤 {lang === "ko" ? "고객 이름" : "Cliente"}</label>
+                            <input className={styles.textInput}
+                                placeholder={lang === "ko" ? "고객 이름 입력..." : "Nombre del cliente..."}
+                                value={customerName}
+                                onChange={e => setCustomerName(e.target.value)} />
+                        </div>
+                        <div className={styles.inputGroup}>
+                            <label className={styles.inputLabel}>📝 {lang === "ko" ? "메모" : "Nota"}</label>
+                            <input className={styles.textInput}
+                                placeholder={lang === "ko" ? "메모 (선택)" : "Nota opcional"}
+                                value={note}
+                                onChange={e => setNote(e.target.value)} />
+                        </div>
+                    </div>
+
+                    {/* Row Header */}
                     <div className={styles.rowsHeader}>
                         <span className={styles.colLabel}>{lang === "ko" ? "분류" : "Categ."}</span>
                         <span className={styles.colLabel}>{lang === "ko" ? "서브" : "Subcateg."}</span>
@@ -242,75 +388,46 @@ export default function OrdersPage() {
                         <span />
                     </div>
 
-                    {rows.map((row, idx) => {
+                    {inventoryLoading ? <div className={styles.empty}>Loading...</div> : rows.map((row, idx) => {
                         const subs = subCatsFor(row.main_category);
                         const colors = colorsFor(row.main_category, row.sub_category);
                         const sizes = sizesFor(row.main_category, row.sub_category, row.color);
                         const maxQty = maxQtyFor(row);
-
                         return (
                             <div key={idx} className={styles.orderRow}>
-                                {/* main_category */}
-                                <select className={styles.sel} value={row.main_category}
-                                    onChange={e => updateRow(idx, "main_category", e.target.value)}>
+                                <select className={styles.sel} value={row.main_category} onChange={e => updateRow(idx, "main_category", e.target.value)}>
                                     <option value="">—</option>
                                     {mainCats.map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
-
-                                {/* sub_category */}
-                                <select className={styles.sel} value={row.sub_category}
-                                    onChange={e => updateRow(idx, "sub_category", e.target.value)}
-                                    disabled={!row.main_category}>
+                                <select className={styles.sel} value={row.sub_category} onChange={e => updateRow(idx, "sub_category", e.target.value)} disabled={!row.main_category}>
                                     <option value="">—</option>
                                     {subs.map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
-
-                                {/* color */}
-                                <select className={styles.sel} value={row.color}
-                                    onChange={e => updateRow(idx, "color", e.target.value)}
-                                    disabled={!row.sub_category}>
+                                <select className={styles.sel} value={row.color} onChange={e => updateRow(idx, "color", e.target.value)} disabled={!row.sub_category}>
                                     <option value="">—</option>
                                     {colors.map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
-
-                                {/* size */}
-                                <select className={styles.sel} value={row.size}
-                                    onChange={e => updateRow(idx, "size", e.target.value)}
-                                    disabled={!row.color}>
+                                <select className={styles.sel} value={row.size} onChange={e => updateRow(idx, "size", e.target.value)} disabled={!row.color}>
                                     <option value="">—</option>
                                     {sizes.map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
-
-                                {/* quantity */}
                                 <div className={styles.qtyCell}>
                                     <input type="number" min="1" max={maxQty || undefined}
-                                        className={styles.qtyInput}
-                                        placeholder="0"
+                                        className={styles.qtyInput} placeholder="0"
                                         value={row.quantity}
                                         onChange={e => updateRow(idx, "quantity", e.target.value)} />
-                                    {maxQty > 0 && (
-                                        <span className={styles.maxHint}>/{maxQty}</span>
-                                    )}
+                                    {maxQty > 0 && <span className={styles.maxHint}>/{maxQty}</span>}
                                 </div>
-
-                                {/* remove */}
-                                <button className={styles.removeBtn}
-                                    onClick={() => removeRow(idx)}
-                                    disabled={rows.length === 1}>✕</button>
+                                <button className={styles.removeBtn} onClick={() => removeRow(idx)} disabled={rows.length === 1}>✕</button>
                             </div>
                         );
                     })}
 
-                    {/* add row */}
                     <button className={styles.addRowBtn} onClick={addRow}>
                         + {lang === "ko" ? "항목 추가" : "Agregar línea"}
                     </button>
 
-                    {/* Note + Summary + Submit */}
                     <div className={styles.footer}>
-                        <textarea className={styles.noteInput}
-                            placeholder={lang === "ko" ? "메모 (선택)" : "Nota (opcional)"}
-                            value={note} onChange={e => setNote(e.target.value)} rows={2} />
                         <div className={styles.footerRight}>
                             <div className={styles.totalRow}>
                                 <span className={styles.totalLabel}>{lang === "ko" ? "총 수량" : "Total"}</span>
@@ -334,6 +451,7 @@ export default function OrdersPage() {
                     <div className={styles.modalBox}>
                         <div className={styles.slipIcon}>🧾</div>
                         <h3>{lang === "ko" ? "주문 완료!" : "¡Pedido creado!"}</h3>
+                        {slipData.customer && <p className={styles.customerNameSlip}>👤 {slipData.customer}</p>}
                         <p className={styles.modalSub}>
                             {lang === "ko"
                                 ? `${slipData.items.length}가지, 총 ${slipData.items.reduce((s, i) => s + parseInt(String(i.quantity)), 0)}개`
@@ -352,10 +470,10 @@ export default function OrdersPage() {
                             ))}
                         </div>
                         <div className={styles.modalActions}>
-                            <button className={styles.btnCancel} onClick={() => { setSlipData(null); fetchInventory(); }}>
-                                {lang === "ko" ? "닫기" : "Cerrar"}
+                            <button className={styles.btnCancel} onClick={() => { setSlipData(null); setTab("list"); }}>
+                                {lang === "ko" ? "목록으로" : "Ver lista"}
                             </button>
-                            <button className={styles.btnPrint} onClick={() => { printOrder(slipData); setSlipData(null); fetchInventory(); }}>
+                            <button className={styles.btnPrint} onClick={() => { printOrder(slipData); setSlipData(null); setTab("list"); }}>
                                 🖨️ {lang === "ko" ? "주문전표 인쇄" : "Imprimir"}
                             </button>
                         </div>

@@ -2,8 +2,14 @@
     max-width: 1100px;
 }
 
-.header {
-    margin-bottom: 24px;
+/* ─── Page Header ─── */
+.pageHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
 }
 
 .title {
@@ -11,12 +17,263 @@
     font-weight: 800;
     color: var(--text-primary);
     letter-spacing: -0.5px;
-    margin-bottom: 4px;
 }
 
-.subtitle {
-    font-size: 14px;
+/* ─── Tabs ─── */
+.tabs {
+    display: flex;
+    gap: 6px;
+    background: var(--bg-muted);
+    border-radius: 12px;
+    padding: 4px;
+    border: 1px solid var(--border);
+}
+
+.tab {
+    padding: 8px 18px;
+    border: none;
+    background: transparent;
     color: var(--text-muted);
+    border-radius: 9px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.tab:hover {
+    color: var(--text-primary);
+}
+
+.tabActive {
+    background: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+}
+
+/* ─── List Section ─── */
+.listSection {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.filterBar {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.filterBtn {
+    padding: 6px 12px;
+    border: 1.5px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.filterBtn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.filterActive {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.refreshBtn {
+    padding: 6px 12px;
+    border: 1.5px solid var(--border);
+    background: var(--bg-card);
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+
+.refreshBtn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.orderCards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* ─── Order Card ─── */
+.orderCard {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+}
+
+.orderCard:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.07);
+}
+
+.orderCardTop {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    cursor: pointer;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.orderMeta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.customerName {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.orderId {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: monospace;
+    font-weight: 600;
+}
+
+.orderDate {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.orderRight {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.orderQty {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.statusBadge {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 99px;
+    white-space: nowrap;
+}
+
+.chevron {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+/* ─── Order Detail ─── */
+.orderDetail {
+    border-top: 1px solid var(--border);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: var(--bg-muted);
+}
+
+.itemList {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.itemRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.itemRow:last-child {
+    border-bottom: none;
+}
+
+.itemName {
+    font-weight: 600;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.itemTags {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.itemQty {
+    font-weight: 800;
+    color: var(--text-primary);
+    font-size: 14px;
+    min-width: 40px;
+    text-align: right;
+}
+
+.orderNote {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.orderActions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.actionBtn {
+    padding: 9px 16px;
+    border: none;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 700;
+    color: white;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.actionBtn:hover {
+    opacity: 0.85;
+}
+
+.actionBtnOutline {
+    padding: 9px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 700;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.actionBtnOutline:hover {
+    opacity: 0.85;
 }
 
 /* ─── Form Card ─── */
@@ -25,6 +282,50 @@
     border: 1px solid var(--border);
     border-radius: 16px;
     padding: 20px;
+}
+
+/* ─── Top Inputs ─── */
+.topInputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1.5px solid var(--border);
+}
+
+@media (max-width: 640px) {
+    .topInputs {
+        grid-template-columns: 1fr;
+    }
+}
+
+.inputGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.inputLabel {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.textInput {
+    padding: 9px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 9px;
+    font-size: 14px;
+    background: var(--bg-main);
+    color: var(--text-primary);
+}
+
+.textInput:focus {
+    outline: none;
+    border-color: var(--primary);
 }
 
 /* ─── Row Header ─── */
@@ -53,10 +354,6 @@
     align-items: center;
     padding: 6px 0;
     border-bottom: 1px solid var(--border);
-}
-
-.orderRow:last-of-type {
-    border-bottom: none;
 }
 
 .sel {
@@ -117,10 +414,9 @@
     font-size: 11px;
     color: var(--text-muted);
     white-space: nowrap;
-    flex-shrink: 0;
 }
 
-/* ─── Remove button ─── */
+/* ─── Remove ─── */
 .removeBtn {
     width: 32px;
     height: 32px;
@@ -130,11 +426,7 @@
     font-size: 12px;
     color: #ef4444;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     transition: background 0.15s;
-    flex-shrink: 0;
 }
 
 .removeBtn:hover:not(:disabled) {
@@ -164,7 +456,6 @@
 .addRowBtn:hover {
     border-color: var(--primary);
     color: var(--primary);
-    background: rgba(var(--primary-rgb, 79, 70, 229), 0.04);
 }
 
 /* ─── Footer ─── */
@@ -173,27 +464,7 @@
     padding-top: 16px;
     border-top: 1.5px solid var(--border);
     display: flex;
-    gap: 16px;
-    align-items: flex-end;
-    flex-wrap: wrap;
-}
-
-.noteInput {
-    flex: 1;
-    min-width: 200px;
-    padding: 10px 12px;
-    border: 1.5px solid var(--border);
-    border-radius: 10px;
-    font-size: 13px;
-    background: var(--bg-main);
-    color: var(--text-primary);
-    resize: none;
-    font-family: inherit;
-}
-
-.noteInput:focus {
-    outline: none;
-    border-color: var(--primary);
+    justify-content: flex-end;
 }
 
 .footerRight {
@@ -201,7 +472,6 @@
     flex-direction: column;
     align-items: flex-end;
     gap: 10px;
-    flex-shrink: 0;
 }
 
 .totalRow {
@@ -233,7 +503,6 @@
     font-weight: 800;
     cursor: pointer;
     transition: opacity 0.2s;
-    letter-spacing: -0.2px;
     white-space: nowrap;
 }
 
@@ -246,7 +515,7 @@
     cursor: not-allowed;
 }
 
-/* ─── Tag ─── */
+/* ─── Tags ─── */
 .tag {
     font-size: 11px;
     font-weight: 600;
@@ -290,8 +559,16 @@
     font-size: 18px;
     font-weight: 800;
     text-align: center;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
     color: var(--text-primary);
+}
+
+.customerNameSlip {
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+    color: var(--text-primary);
+    margin-bottom: 4px;
 }
 
 .modalSub {
@@ -306,7 +583,7 @@
     border-radius: 10px;
     overflow: hidden;
     margin: 8px 0 16px;
-    max-height: 260px;
+    max-height: 220px;
     overflow-y: auto;
     font-size: 13px;
 }
