@@ -35,43 +35,28 @@ export default function SalesHistoryPage() {
 
     useEffect(() => {
         const checkAccessAndFetch = async () => {
-            // 1. 권한 체크 (Admin만 접근 가능)
+            // 1. 로그인 여부만 확인 (권한 체크는 API가 담당)
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) {
                 router.replace("/auth/login");
                 return;
             }
 
-            const { data: profile } = await supabase
-                .from("profiles")
-                .select("role")
-                .eq("id", session.user.id)
-                .maybeSingle();
-
-            const role = profile?.role ?? session.user.user_metadata?.role;
-
+            // JWT에서 role 확인 (profiles 테이블 조회 없이 → recursion 방지)
+            const role = session.user.user_metadata?.role;
             if (role !== "admin") {
-                // 직원은 접근 불가 -> 일반 판매 화면이나 대시보드로 튕김
                 router.replace("/dashboard/sales");
                 return;
             }
 
-            const { data, error } = await supabase
-                .from("sales_history")
-                .select(`
-                    id,
-                    quantity,
-                    created_at,
-                    inventory ( name, main_category, sub_category, color, size ),
-                    profiles ( username, role )
-                `)
-                .order("created_at", { ascending: false });
-
-            if (error) {
-                console.error("Error fetching sales history:", error);
-                setFetchError(error.message);
-            } else if (data) {
-                setHistoryList(data as unknown as SalesHistoryItem[]);
+            // 2. 서버 API 라우트를 통해 장부 조회 (service_role로 RLS 완전 우회)
+            const res = await fetch("/api/sales-history");
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({ error: "Unknown error" }));
+                setFetchError(err.error || res.statusText);
+            } else {
+                const data = await res.json();
+                setHistoryList(data as SalesHistoryItem[]);
             }
             setLoading(false);
         };
