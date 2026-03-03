@@ -110,7 +110,25 @@ export default function InventoryPage() {
         });
     }, [fetchSubCategories, fetchItems]);
 
-    const currentSubs = subCategories.filter((c) => c.main_category === mainTab);
+    const currentSubs = subCategories
+        .filter((c) => c.main_category === mainTab)
+        .sort((a, b) => {
+            const order = [
+                "Camisa ML (SH-01)",
+                "Camisa MC (SH-02)",
+                "Pantalon tropical (PH-01)",
+                "Saco tropical (CH-01)"
+            ];
+
+            const idxA = order.findIndex(o => o.toLowerCase() === a.name.toLowerCase());
+            const idxB = order.findIndex(o => o.toLowerCase() === b.name.toLowerCase());
+
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            if (idxA !== -1) return -1;
+            if (idxB !== -1) return 1;
+
+            return a.name.localeCompare(b.name);
+        });
 
     const filtered = items.filter((item) => {
         const mainMatch = item.main_category === mainTab;
