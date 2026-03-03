@@ -20,7 +20,8 @@
 }
 
 .loading,
-.emptyCard {
+.emptyCard,
+.errorCard {
     text-align: center;
     padding: 60px;
     color: var(--text-muted);
@@ -28,6 +29,22 @@
     background: var(--bg-card);
     border-radius: 14px;
     border: 1px dashed var(--border);
+}
+
+.errorCard {
+    border-color: #ef4444;
+    color: #ef4444;
+}
+
+.retryBtn {
+    margin-top: 16px;
+    padding: 8px 16px;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
 }
 
 .tableWrapper {

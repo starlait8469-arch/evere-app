@@ -29,6 +29,7 @@ export default function SalesHistoryPage() {
     const router = useRouter();
     const [historyList, setHistoryList] = useState<SalesHistoryItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState<string | null>(null);
 
     const supabase = createClient();
 
@@ -55,8 +56,6 @@ export default function SalesHistoryPage() {
                 return;
             }
 
-            // 2. 판매 장부 데이터 가져오기 
-            // supabase-js v2 조인 문법 (inventory & profiles 테이블)
             const { data, error } = await supabase
                 .from("sales_history")
                 .select(`
@@ -64,12 +63,13 @@ export default function SalesHistoryPage() {
                     quantity,
                     created_at,
                     inventory ( name, main_category, sub_category, color, size ),
-                    profiles ( username, role )
+                    profiles:sold_by ( username, role )
                 `)
                 .order("created_at", { ascending: false });
 
             if (error) {
                 console.error("Error fetching sales history:", error);
+                setFetchError(error.message);
             } else if (data) {
                 setHistoryList(data as unknown as SalesHistoryItem[]);
             }
@@ -99,6 +99,11 @@ export default function SalesHistoryPage() {
 
             {loading ? (
                 <div className={styles.loading}>Loading...</div>
+            ) : fetchError ? (
+                <div className={styles.errorCard}>
+                    <p>⚠️ Error: {fetchError}</p>
+                    <button onClick={() => window.location.reload()} className={styles.retryBtn}>Retry</button>
+                </div>
             ) : historyList.length === 0 ? (
                 <div className={styles.emptyCard}>
                     {lang === "ko" ? "판매 기록이 없습니다." : "No hay registros de ventas."}
