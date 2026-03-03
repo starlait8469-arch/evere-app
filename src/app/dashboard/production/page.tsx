@@ -284,10 +284,10 @@ export default function ProductionPage() {
             </tr>`).join("");
 
         const html = `<!DOCTYPE html>
-<html lang="ko">
+<html lang="es">
 <head>
 <meta charset="UTF-8"/>
-<title>출고전표 - ${slip.factoryName}</title>
+<title>Remisión de Costura - ${slip.factoryName}</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:'Helvetica Neue',Arial,sans-serif; padding:32px; color:#111; }
@@ -307,36 +307,36 @@ export default function ProductionPage() {
 </head>
 <body>
   <div class="header">
-    <div class="title">봉제 출고전표 / Remisión de Costura</div>
+    <div class="title">Remisión de Costura</div>
     <div class="meta">
-      <span>📅 날짜: <strong>${slip.date}</strong></span>
-      <span>🏭 공장: <strong>${slip.factoryName}</strong></span>
-      <span>총 <strong>${slip.orders.length}</strong>건</span>
+      <span>📅 Fecha: <strong>${slip.date}</strong></span>
+      <span>🏭 Taller: <strong>${slip.factoryName}</strong></span>
+      <span>Total: <strong>${slip.orders.length}</strong> orden(es)</span>
     </div>
   </div>
 
   <table>
     <thead>
       <tr>
-        <th>분류</th>
-        <th>서브카테고리</th>
-        <th>색상</th>
-        <th>사이즈</th>
-        <th style="text-align:center;">수량</th>
+        <th>Categoría</th>
+        <th>Subcategoría</th>
+        <th>Color</th>
+        <th>Talla</th>
+        <th style="text-align:center;">Cantidad</th>
       </tr>
     </thead>
     <tbody>${rows}</tbody>
     <tfoot>
       <tr>
-        <td colspan="4">합계 / Total</td>
+        <td colspan="4">Total</td>
         <td style="text-align:center;">${slip.orders.reduce((s, o) => s + o.quantity, 0)}</td>
       </tr>
     </tfoot>
   </table>
 
   <div class="footer">
-    <div class="sign">출고 확인<br/><br/>__________________</div>
-    <div class="sign">수령 확인<br/><br/>__________________</div>
+    <div class="sign">Entregado por<br/><br/>__________________</div>
+    <div class="sign">Recibido por<br/><br/>__________________</div>
   </div>
 </body>
 </html>`;
