@@ -176,12 +176,12 @@ export default function OrdersPage() {
     const printOrder = (data: NonNullable<typeof slipData>) => {
         const rowsHtml = data.items.map(item => `
             <tr>
-                <td class="check"><span class="box">□</span></td>
                 <td>${item.main_category}</td>
                 <td>${item.sub_category || "—"}</td>
                 <td>${item.color || "—"}</td>
                 <td>${item.size || "—"}</td>
                 <td style="text-align:center;font-weight:700;">${item.quantity}</td>
+                <td class="check"><span class="box">□</span></td>
             </tr>`).join("");
         const total = data.items.reduce((s, i) => s + parseInt(String(i.quantity)), 0);
         const html = `<!DOCTYPE html>
@@ -216,9 +216,9 @@ export default function OrdersPage() {
     </div>
   </div>
   <table>
-    <thead><tr><th style="width:36px;">✓</th><th>Categoría</th><th>Subcategoría</th><th>Color</th><th>Talla</th><th style="text-align:center;">Cantidad</th></tr></thead>
+    <thead><tr><th>Categoría</th><th>Subcategoría</th><th>Color</th><th>Talla</th><th style="text-align:center;">Cantidad</th><th style="width:36px;text-align:center;">✓</th></tr></thead>
     <tbody>${rowsHtml}</tbody>
-    <tfoot><tr><td></td><td colspan="4">Total</td><td style="text-align:center;">${total}</td></tr></tfoot>
+    <tfoot><tr><td colspan="4">Total</td><td style="text-align:center;">${total}</td><td></td></tr></tfoot>
   </table>
   <div class="footer">
     <div class="sign">Preparado por<br/><br/>__________________</div>
