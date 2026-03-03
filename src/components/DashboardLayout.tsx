@@ -62,6 +62,15 @@ export default function DashboardLayout({ children, username, role }: Props) {
         ...(isAdmin
             ? [
                 {
+                    href: "/dashboard/production/factories",
+                    label: lang === "ko" ? "봉제공장 관리" : "Talleres",
+                    icon: (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                            <path d="M3 21V8l9-6 9 6v13M9 21V12h6v9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                    ),
+                },
+                {
                     href: "/dashboard/sales/history",
                     label: lang === "ko" ? "판매 장부" : "Historial Ventas",
                     icon: (

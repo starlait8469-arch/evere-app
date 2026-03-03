@@ -1,0 +1,144 @@
+.page {
+    max-width: 700px;
+}
+
+.header {
+    margin-bottom: 24px;
+}
+
+.title {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+}
+
+.subtitle {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.addCard {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px;
+    margin-bottom: 20px;
+}
+
+.addTitle {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 14px;
+}
+
+.addRow {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.input {
+    flex: 1;
+    min-width: 160px;
+    padding: 10px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--bg-main);
+    color: var(--text-primary);
+    transition: border-color 0.15s;
+}
+
+.input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.addBtn {
+    padding: 10px 18px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.2s;
+}
+
+.addBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.factoryRow {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    transition: box-shadow 0.2s;
+}
+
+.factoryRow:hover {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+}
+
+.factoryInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.factoryName {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.factoryNotes {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.deleteBtn {
+    padding: 7px 14px;
+    border: 1.5px solid #ef4444;
+    background: transparent;
+    color: #ef4444;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+}
+
+.deleteBtn:hover {
+    background: #ef4444;
+    color: white;
+}
+
+.empty {
+    text-align: center;
+    padding: 60px;
+    color: var(--text-muted);
+    font-size: 14px;
+    background: var(--bg-card);
+    border-radius: 14px;
+    border: 1px dashed var(--border);
+}

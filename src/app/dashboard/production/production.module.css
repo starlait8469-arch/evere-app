@@ -1,0 +1,352 @@
+.page {
+    max-width: 1100px;
+}
+
+.header {
+    margin-bottom: 24px;
+}
+
+.title {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+}
+
+.subtitle {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+/* ─── Tabs ─── */
+.tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0;
+}
+
+.tab {
+    padding: 10px 20px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.2s;
+    border-radius: 0;
+}
+
+.tab:hover {
+    color: var(--text-primary);
+}
+
+.tabActive {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
+/* ─── Stage Filter ─── */
+.stageFilter {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.filterBtn {
+    padding: 6px 14px;
+    border: 1.5px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    border-radius: 99px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.filterBtn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.filterBtnActive {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+/* ─── Order Cards ─── */
+.cardGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+}
+
+.orderCard {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: box-shadow 0.2s;
+}
+
+.orderCard:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.07);
+}
+
+.cardTop {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.stageBadge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 99px;
+    letter-spacing: 0.3px;
+}
+
+.qty {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.itemName {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.itemMeta {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.tag {
+    font-size: 12px;
+    padding: 2px 8px;
+    background: var(--bg-muted);
+    border-radius: 99px;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.factoryLabel {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.cardDate {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: auto;
+}
+
+.advanceBtn {
+    margin-top: 8px;
+    padding: 8px 0;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    width: 100%;
+}
+
+.advanceBtn:hover {
+    opacity: 0.85;
+}
+
+.empty {
+    text-align: center;
+    padding: 60px;
+    color: var(--text-muted);
+    font-size: 14px;
+    background: var(--bg-card);
+    border-radius: 14px;
+    border: 1px dashed var(--border);
+}
+
+/* ─── New Form ─── */
+.newForm {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px;
+    max-width: 560px;
+}
+
+.formTitle {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+}
+
+.formGrid {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.formGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.formGroup label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.formGroup input,
+.formGroup select {
+    padding: 10px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--bg-main);
+    color: var(--text-primary);
+    transition: border-color 0.15s;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.formGroup input:focus,
+.formGroup select:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.submitBtn {
+    width: 100%;
+    padding: 12px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.submitBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.submitBtn:not(:disabled):hover {
+    opacity: 0.9;
+}
+
+.successMsg {
+    background: rgba(16, 185, 129, 0.1);
+    color: #059669;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+
+/* ─── Modal ─── */
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.modalBox {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    max-width: 380px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+
+.modalBox h3 {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.modalSub {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+}
+
+.factorySelect {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--bg-main);
+    color: var(--text-primary);
+    margin-bottom: 20px;
+    appearance: none;
+}
+
+.modalActions {
+    display: flex;
+    gap: 10px;
+}
+
+.btnCancel {
+    flex: 1;
+    padding: 10px;
+    border: 1.5px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btnConfirm {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: var(--primary);
+    color: white;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.btnConfirm:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
