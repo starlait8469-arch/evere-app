@@ -20,7 +20,7 @@ type InventoryItem = {
 };
 
 export default function SalesPage() {
-    const { t } = useLanguage();
+    const { t, lang } = useLanguage();
     const [items, setItems] = useState<InventoryItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -161,7 +161,9 @@ export default function SalesPage() {
 
         if (historyError) {
             console.error("Error recording sale:", historyError);
-            // 에러 표시를 해줄 수 있지만 재고는 이미 빠진 상태임 (트랜잭션이 완벽하진 않음)
+            alert("Error recording sale: " + historyError.message);
+        } else {
+            alert(lang === "ko" ? "판매가 완료되었습니다." : "Venta registrada con éxito.");
         }
 
         // 로컬 상태 즉시 업데이트
