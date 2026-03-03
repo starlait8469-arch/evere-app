@@ -6,11 +6,11 @@ import styles from "./dashboard.module.css";
 
 interface Props {
     inProgress: number;
-    completed: number;
+    needsCut: number;
     totalInventory: number;
 }
 
-export default function DashboardHome({ inProgress, completed, totalInventory }: Props) {
+export default function DashboardHome({ inProgress, needsCut, totalInventory }: Props) {
     const { t, lang } = useLanguage();
 
     const stats = [
@@ -27,15 +27,15 @@ export default function DashboardHome({ inProgress, completed, totalInventory }:
             href: "/dashboard/production",
         },
         {
-            label: t("pendingRelease"),
-            value: completed,
+            label: lang === "ko" ? "재단하기" : "Cortar ahora",
+            value: needsCut,
             icon: (
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                    <path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M6 2v6m0 0c1.657 0 3 1.343 3 3S7.657 14 6 14s-3-1.343-3-3 1.343-3 3-3zm12 4v6m0 0c1.657 0 3 1.343 3 3s-1.343 3-3 3-3-1.343-3-3 1.343-3 3-3zm-9.5 7.5L18 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
             ),
-            color: "#10b981",
-            bg: "rgba(16,185,129,0.12)",
+            color: "#f97316",
+            bg: "rgba(249,115,22,0.12)",
             href: "/dashboard/production",
         },
         {
@@ -51,6 +51,7 @@ export default function DashboardHome({ inProgress, completed, totalInventory }:
             href: "/dashboard/inventory",
         },
     ];
+
 
     const quickLinks = [
         {
