@@ -705,3 +705,82 @@
 .editGroup select:disabled {
     opacity: 0.4;
 }
+
+/* ─── Dispatch Slip Modal ─── */
+.slipIcon {
+    font-size: 36px;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.slipPreview {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 12px 0;
+    font-size: 13px;
+}
+
+.slipRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.slipRow:last-child {
+    border-bottom: none;
+}
+
+.slipItem {
+    flex: 1;
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.slipTags {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.slipQty {
+    font-weight: 800;
+    color: var(--text-primary);
+    font-size: 14px;
+    flex-shrink: 0;
+    min-width: 36px;
+    text-align: right;
+}
+
+.slipTotal {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--bg-muted);
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.btnPrint {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: #059669;
+    color: white;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    font-size: 14px;
+}
+
+.btnPrint:hover {
+    opacity: 0.85;
+}

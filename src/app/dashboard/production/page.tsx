@@ -269,12 +269,97 @@ export default function ProductionPage() {
         fetchOrders();
     };
 
+    // 출고전표 인쇄
+    type DispatchSlip = { factoryName: string; date: string; orders: ProductionOrder[] };
+    const [dispatchSlip, setDispatchSlip] = useState<DispatchSlip | null>(null);
+
+    const printDispatchSlip = (slip: DispatchSlip) => {
+        const rows = slip.orders.map(o => `
+            <tr>
+                <td>${o.main_category}</td>
+                <td>${o.sub_category || "-"}</td>
+                <td>${o.color || "-"}</td>
+                <td>${o.size || "-"}</td>
+                <td style="text-align:center;font-weight:700;">${o.quantity}</td>
+            </tr>`).join("");
+
+        const html = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<title>출고전표 - ${slip.factoryName}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Helvetica Neue',Arial,sans-serif; padding:32px; color:#111; }
+  .header { border-bottom:3px solid #111; padding-bottom:16px; margin-bottom:20px; }
+  .title { font-size:22px; font-weight:800; letter-spacing:-0.5px; }
+  .meta { margin-top:8px; display:flex; gap:32px; font-size:13px; color:#555; }
+  .meta strong { color:#111; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  thead tr { background:#f0f0f0; }
+  th { padding:10px 12px; text-align:left; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.3px; border-bottom:2px solid #ddd; }
+  td { padding:10px 12px; border-bottom:1px solid #eee; }
+  tfoot td { font-weight:800; font-size:14px; background:#f9f9f9; border-top:2px solid #111; }
+  .footer { margin-top:40px; display:flex; justify-content:space-between; font-size:12px; color:#777; }
+  .sign { border-top:1px solid #aaa; padding-top:6px; min-width:120px; text-align:center; color:#333; }
+  @media print { body { padding:16px; } }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="title">봉제 출고전표 / Remisión de Costura</div>
+    <div class="meta">
+      <span>📅 날짜: <strong>${slip.date}</strong></span>
+      <span>🏭 공장: <strong>${slip.factoryName}</strong></span>
+      <span>총 <strong>${slip.orders.length}</strong>건</span>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>분류</th>
+        <th>서브카테고리</th>
+        <th>색상</th>
+        <th>사이즈</th>
+        <th style="text-align:center;">수량</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+    <tfoot>
+      <tr>
+        <td colspan="4">합계 / Total</td>
+        <td style="text-align:center;">${slip.orders.reduce((s, o) => s + o.quantity, 0)}</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div class="footer">
+    <div class="sign">출고 확인<br/><br/>__________________</div>
+    <div class="sign">수령 확인<br/><br/>__________________</div>
+  </div>
+</body>
+</html>`;
+
+        const w = window.open("", "_blank");
+        if (!w) return;
+        w.document.write(html);
+        w.document.close();
+        w.focus();
+        setTimeout(() => w.print(), 300);
+    };
+
     // 봉제 공장 선택 확인 (단독 또는 다중)
     const confirmFactory = async () => {
         if (!factoryModal || !selectedFactory) return;
         const ids = factoryModal.bulkIds && factoryModal.bulkIds.length > 0
             ? factoryModal.bulkIds
             : [factoryModal.orderId].filter(Boolean) as string[];
+
+        // 발송할 주문 정보 수집 (인쇄용)
+        const dispatchOrders = orders.filter(o => ids.includes(o.id));
+        const factoryObj = factories.find(f => f.id === selectedFactory);
+
         for (const id of ids) {
             await supabase
                 .from("production_orders")
@@ -283,6 +368,16 @@ export default function ProductionPage() {
         }
         setFactoryModal(null);
         setSelectedIds(new Set());
+
+        // 출고전표 데이터 저장 → 인쇄 유도
+        if (factoryObj && dispatchOrders.length > 0) {
+            setDispatchSlip({
+                factoryName: factoryObj.name,
+                date: new Date().toLocaleDateString("ko-KR"),
+                orders: dispatchOrders,
+            });
+        }
+
         fetchOrders();
     };
 
@@ -654,6 +749,50 @@ export default function ProductionPage() {
                 );
             })()}
 
+
+            {/* ─── 출고전표 인쇄 유도 모달 ─── */}
+            {dispatchSlip && (
+                <div className={styles.modalOverlay}>
+                    <div className={styles.modalBox} style={{ maxWidth: 420 }}>
+                        <div className={styles.slipIcon}>🏭</div>
+                        <h3>{lang === "ko" ? "봉제공장 발송 완료!" : "¡Enviado a costura!"}</h3>
+                        <p className={styles.modalSub}>
+                            {lang === "ko"
+                                ? `${dispatchSlip.factoryName}으로 ${dispatchSlip.orders.length}건이 발송되었습니다.`
+                                : `${dispatchSlip.orders.length} orden(es) enviadas a ${dispatchSlip.factoryName}.`}
+                        </p>
+
+                        {/* 미리보기 테이블 */}
+                        <div className={styles.slipPreview}>
+                            {dispatchSlip.orders.map((o, i) => (
+                                <div key={i} className={styles.slipRow}>
+                                    <span className={styles.slipItem}>{o.sub_category || o.main_category}</span>
+                                    <div className={styles.slipTags}>
+                                        {o.color && <span className={styles.tag}>{o.color}</span>}
+                                        {o.size && <span className={styles.tag}>{o.size}</span>}
+                                    </div>
+                                    <span className={styles.slipQty}>{o.quantity}{lang === "ko" ? "개" : ""}</span>
+                                </div>
+                            ))}
+                            <div className={styles.slipTotal}>
+                                <span>{lang === "ko" ? "합계" : "Total"}</span>
+                                <span className={styles.slipQty}>
+                                    {dispatchSlip.orders.reduce((s, o) => s + o.quantity, 0)}{lang === "ko" ? "개" : ""}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className={styles.modalActions} style={{ marginTop: 16 }}>
+                            <button className={styles.btnCancel} onClick={() => setDispatchSlip(null)}>
+                                {lang === "ko" ? "닫기" : "Cerrar"}
+                            </button>
+                            <button className={styles.btnPrint} onClick={() => { printDispatchSlip(dispatchSlip); setDispatchSlip(null); }}>
+                                🖨️ {lang === "ko" ? "출고전표 인쇄" : "Imprimir remisión"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ─── 탭2: 신규 등록 (배치) ─── */}
             {tab === "new" && (
