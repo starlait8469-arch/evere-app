@@ -327,7 +327,8 @@
 }
 
 .subSelect option {
-    background: #1e1e2e;
+    background: var(--bg-card);
+    color: var(--text-primary);
 }
 
 .subSelect:focus {
