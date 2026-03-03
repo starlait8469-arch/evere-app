@@ -80,6 +80,15 @@ export default function DashboardLayout({ children, username, role }: Props) {
                     ),
                 },
                 {
+                    href: "/dashboard/orders",
+                    label: lang === "ko" ? "가게 주문" : "Pedidos",
+                    icon: (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M12 12h.01M12 16h.01M8 12h.01M8 16h.01M16 12h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                    ),
+                },
+                {
                     href: "/dashboard/sales/history",
                     label: lang === "ko" ? "판매 장부" : "Historial Ventas",
                     icon: (
