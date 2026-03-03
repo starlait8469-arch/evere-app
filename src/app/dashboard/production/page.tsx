@@ -71,8 +71,10 @@ export default function ProductionPage() {
     const [newSuccess, setNewSuccess] = useState(false);
 
     // 봉제 공장 선택 모달
-    const [factoryModal, setFactoryModal] = useState<{ orderId: string; } | null>(null);
+    const [factoryModal, setFactoryModal] = useState<{ orderId: string | null; bulkIds?: string[] } | null>(null);
     const [selectedFactory, setSelectedFactory] = useState("");
+    // 재단중 다중 선택
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
     // 단계 이동 확인 모달
     const [advanceModal, setAdvanceModal] = useState<{ order: ProductionOrder } | null>(null);
@@ -267,14 +269,38 @@ export default function ProductionPage() {
         fetchOrders();
     };
 
+    // 봉제 공장 선택 확인 (단독 또는 다중)
     const confirmFactory = async () => {
         if (!factoryModal || !selectedFactory) return;
-        await supabase
-            .from("production_orders")
-            .update({ stage: "sewing", factory_id: selectedFactory })
-            .eq("id", factoryModal.orderId);
+        const ids = factoryModal.bulkIds && factoryModal.bulkIds.length > 0
+            ? factoryModal.bulkIds
+            : [factoryModal.orderId].filter(Boolean) as string[];
+        for (const id of ids) {
+            await supabase
+                .from("production_orders")
+                .update({ stage: "sewing", factory_id: selectedFactory })
+                .eq("id", id);
+        }
         setFactoryModal(null);
+        setSelectedIds(new Set());
         fetchOrders();
+    };
+
+    // 재단중 카드 선택 토글
+    const toggleSelect = (id: string) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    // 선택된 재단중 목록을 일괄 봉제공장으로 보내기
+    const openBulkFactory = () => {
+        if (selectedIds.size === 0) return;
+        setSelectedFactory("");
+        setFactoryModal({ orderId: null, bulkIds: [...selectedIds] });
     };
 
     // 신규 공정 등록 (배치 - 여러 행 한번에 insert)
@@ -378,81 +404,124 @@ export default function ProductionPage() {
                         <div className={styles.empty}>
                             {lang === "ko" ? "공정이 없습니다." : "No hay órdenes."}
                         </div>
-                    ) : (
-                        <div className={styles.cardGrid}>
-                            {filtered.map(order => {
-                                const info = stageInfo(order.stage);
-                                const next = NEXT_STAGE[order.stage];
-                                const nextInfo = next ? stageInfo(next) : null;
-                                return (
-                                    <div key={order.id} className={styles.orderCard}>
-                                        <div className={styles.cardTop}>
-                                            <span
-                                                className={styles.stageBadge}
-                                                style={{ background: info.color + "20", color: info.color }}
-                                            >
-                                                {lang === "ko" ? info.ko : info.es}
-                                            </span>
-                                            <span className={styles.qty}>{order.quantity}{lang === "ko" ? "개" : " uds."}</span>
-                                        </div>
-                                        <div className={styles.itemName}>{order.sub_category || order.main_category}</div>
-                                        <div className={styles.itemMeta}>
-                                            {order.color && <span className={styles.tag}>{order.color}</span>}
-                                            {order.size && <span className={styles.tag}>{order.size}</span>}
-                                        </div>
-                                        {order.stage === "sewing" && order.sewing_factories && (
-                                            <div className={styles.factoryLabel}>
-                                                🏭 {order.sewing_factories.name}
-                                            </div>
-                                        )}
-                                        <div className={styles.cardDate}>
-                                            {new Date(order.created_at).toLocaleDateString()}
-                                        </div>
-                                        <div className={styles.cardActions}>
-                                            {/* 관리자 전용: 수정/삭제 버튼 */}
-                                            {isAdmin && (
-                                                <>
-                                                    <button
-                                                        className={styles.editBtn}
-                                                        onClick={() => openEdit(order)}
-                                                        title={lang === "ko" ? "수정" : "Editar"}
-                                                    >✏️</button>
-                                                    <button
-                                                        className={styles.deleteCardBtn}
-                                                        onClick={() => setDeleteModal({ order })}
-                                                        title={lang === "ko" ? "삭제" : "Eliminar"}
-                                                    >🗑️</button>
-                                                </>
-                                            )}
-                                            {/* 이전 단계 롤백 버튼 (cutting 제외) */}
-                                            {PREV_STAGE[order.stage] && (
-                                                <button
-                                                    className={styles.rollbackBtn}
-                                                    onClick={() => openRollback(order)}
-                                                    title={lang === "ko" ? "이전 단계로" : "Retroceder"}
-                                                >
-                                                    ↩
-                                                </button>
-                                            )}
-                                            {/* 다음 단계 이동 버튼 */}
-                                            {nextInfo && (
-                                                <button
-                                                    className={styles.advanceBtn}
-                                                    style={{ background: nextInfo.color }}
-                                                    onClick={() => openAdvance(order)}
-                                                >
-                                                    → {lang === "ko" ? nextInfo.ko : nextInfo.es}
-                                                </button>
-                                            )}
+                    ) : (() => {
+                        // 카테고리/서브카테고리별 그룹화
+                        const groups: { label: string; orders: ProductionOrder[] }[] = [];
+                        const groupMap = new Map<string, ProductionOrder[]>();
+                        filtered.forEach(o => {
+                            const key = `${o.main_category}__${o.sub_category || ""}`;
+                            if (!groupMap.has(key)) groupMap.set(key, []);
+                            groupMap.get(key)!.push(o);
+                        });
+                        groupMap.forEach((orders, key) => {
+                            const [main, sub] = key.split("__");
+                            const label = sub ? `${main} › ${sub}` : main;
+                            groups.push({ label, orders });
+                        });
 
+                        // 재단중 카드 선택된 개수 (일괄 발송 바)
+                        const cuttingSelected = [...selectedIds].filter(id =>
+                            filtered.find(o => o.id === id && o.stage === "cutting")
+                        );
+
+                        return (
+                            <>
+                                {/* 일괄 봉제공장 발송 바 */}
+                                {cuttingSelected.length > 0 && (
+                                    <div className={styles.bulkBar}>
+                                        <span>{lang === "ko" ? `${cuttingSelected.length}개 선택됨` : `${cuttingSelected.length} seleccionado(s)`}</span>
+                                        <button className={styles.bulkBtn} onClick={openBulkFactory}>
+                                            🏭 {lang === "ko" ? "봉제공장으로 보내기" : "Enviar a costura"}
+                                        </button>
+                                        <button className={styles.bulkClear} onClick={() => setSelectedIds(new Set())}>✕</button>
+                                    </div>
+                                )}
+
+                                {groups.map(group => (
+                                    <div key={group.label} className={styles.group}>
+                                        <div className={styles.groupHeader}>
+                                            <span className={styles.groupLabel}>{group.label}</span>
+                                            <span className={styles.groupCount}>{group.orders.length}{lang === "ko" ? "건" : " ord."}</span>
+                                        </div>
+                                        <div className={styles.cardGrid}>
+                                            {group.orders.map(order => {
+                                                const info = stageInfo(order.stage);
+                                                const next = NEXT_STAGE[order.stage];
+                                                const nextInfo = next ? stageInfo(next) : null;
+                                                const isCutting = order.stage === "cutting";
+                                                const isChecked = selectedIds.has(order.id);
+                                                return (
+                                                    <div
+                                                        key={order.id}
+                                                        className={`${styles.orderCard} ${isChecked ? styles.orderCardSelected : ""}`}
+                                                    >
+                                                        {/* 재단중: 체크박스 */}
+                                                        {isCutting && (
+                                                            <label className={styles.checkRow}>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={isChecked}
+                                                                    onChange={() => toggleSelect(order.id)}
+                                                                />
+                                                                <span className={styles.checkLabel}>
+                                                                    {lang === "ko" ? "선택" : "Sel."}
+                                                                </span>
+                                                            </label>
+                                                        )}
+                                                        <div className={styles.cardTop}>
+                                                            <span
+                                                                className={styles.stageBadge}
+                                                                style={{ background: info.color + "20", color: info.color }}
+                                                            >
+                                                                {lang === "ko" ? info.ko : info.es}
+                                                            </span>
+                                                            <span className={styles.qty}>{order.quantity}{lang === "ko" ? "개" : " uds."}</span>
+                                                        </div>
+                                                        <div className={styles.itemName}>{order.sub_category || order.main_category}</div>
+                                                        <div className={styles.itemMeta}>
+                                                            {order.color && <span className={styles.tag}>{order.color}</span>}
+                                                            {order.size && <span className={styles.tag}>{order.size}</span>}
+                                                        </div>
+                                                        {order.stage === "sewing" && order.sewing_factories && (
+                                                            <div className={styles.factoryLabel}>
+                                                                🏭 {order.sewing_factories.name}
+                                                            </div>
+                                                        )}
+                                                        <div className={styles.cardDate}>
+                                                            {new Date(order.created_at).toLocaleDateString()}
+                                                        </div>
+                                                        <div className={styles.cardActions}>
+                                                            {isAdmin && (
+                                                                <>
+                                                                    <button className={styles.editBtn} onClick={() => openEdit(order)} title={lang === "ko" ? "수정" : "Editar"}>✏️</button>
+                                                                    <button className={styles.deleteCardBtn} onClick={() => setDeleteModal({ order })} title={lang === "ko" ? "삭제" : "Eliminar"}>🗑️</button>
+                                                                </>
+                                                            )}
+                                                            {PREV_STAGE[order.stage] && (
+                                                                <button className={styles.rollbackBtn} onClick={() => openRollback(order)} title={lang === "ko" ? "이전 단계로" : "Retroceder"}>↩</button>
+                                                            )}
+                                                            {nextInfo && (
+                                                                <button
+                                                                    className={styles.advanceBtn}
+                                                                    style={{ background: nextInfo.color }}
+                                                                    onClick={() => openAdvance(order)}
+                                                                >
+                                                                    → {lang === "ko" ? nextInfo.ko : nextInfo.es}
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     </div>
-                                );
-                            })}
-                        </div>
-                    )}
+                                ))}
+                            </>
+                        );
+                    })()}
                 </>
             )}
+
 
             {/* ─── 관리자 전용: 삭제 확인 모달 ─── */}
             {deleteModal && (

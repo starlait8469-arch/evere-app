@@ -82,6 +82,110 @@
     border-color: var(--primary);
 }
 
+/* ─── Group ─── */
+.group {
+    margin-bottom: 24px;
+}
+
+.groupHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 4px;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 14px;
+}
+
+.groupLabel {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.2px;
+    text-transform: capitalize;
+}
+
+.groupCount {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--bg-muted);
+    padding: 2px 8px;
+    border-radius: 99px;
+}
+
+/* ─── Bulk Send Bar ─── */
+.bulkBar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--primary);
+    color: white;
+    padding: 10px 16px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35);
+}
+
+.bulkBtn {
+    margin-left: auto;
+    background: white;
+    color: var(--primary);
+    font-weight: 700;
+    font-size: 13px;
+    border: none;
+    padding: 7px 14px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.bulkBtn:hover {
+    opacity: 0.85;
+}
+
+.bulkClear {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    border-radius: 6px;
+    padding: 6px 9px;
+    font-size: 12px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+/* ─── Checkbox ─── */
+.checkRow {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    margin-bottom: 4px;
+}
+
+.checkRow input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--primary);
+}
+
+.checkLabel {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.orderCardSelected {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
 /* ─── Order Cards ─── */
 .cardGrid {
     display: grid;
