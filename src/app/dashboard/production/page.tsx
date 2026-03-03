@@ -58,15 +58,12 @@ export default function ProductionPage() {
     // 탭
     const [tab, setTab] = useState<"status" | "new">("status");
 
-    // 신규 등록 폼
+    // 신규 등록 폼 - 배치 방식 (색상 공통, 여러 행)
     const [categories, setCategories] = useState<Category[]>([]);
-    const [newForm, setNewForm] = useState({
-        main_category: "",
-        sub_category: "",
-        color: "",
-        size: "",
-        quantity: "",
-    });
+    const [batchColor, setBatchColor] = useState("");
+    type BatchRow = { main_category: string; sub_category: string; size: string; quantity: string; };
+    const emptyRow = (): BatchRow => ({ main_category: "", sub_category: "", size: "", quantity: "" });
+    const [batchRows, setBatchRows] = useState<BatchRow[]>([emptyRow()]);
     const [newLoading, setNewLoading] = useState(false);
     const [newSuccess, setNewSuccess] = useState(false);
 
@@ -166,21 +163,24 @@ export default function ProductionPage() {
         fetchOrders();
     };
 
-    // 신규 공정 등록
+    // 신규 공정 등록 (배치 - 여러 행 한번에 insert)
     const submitNew = async () => {
-        if (!newForm.main_category || !newForm.quantity) return;
+        const validRows = batchRows.filter(r => r.main_category && r.quantity);
+        if (validRows.length === 0) return;
         setNewLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
-        await supabase.from("production_orders").insert([{
-            main_category: newForm.main_category,
-            sub_category: newForm.sub_category,
-            color: newForm.color,
-            size: newForm.size,
-            quantity: parseInt(newForm.quantity, 10),
-            stage: "cutting",
+        const inserts = validRows.map(r => ({
+            main_category: r.main_category,
+            sub_category: r.sub_category,
+            color: batchColor,
+            size: r.size,
+            quantity: parseInt(r.quantity, 10),
+            stage: "cutting" as Stage,
             created_by: user?.id || null,
-        }]);
-        setNewForm({ main_category: "", sub_category: "", color: "", size: "", quantity: "" });
+        }));
+        await supabase.from("production_orders").insert(inserts);
+        setBatchRows([emptyRow()]);
+        setBatchColor("");
         setNewLoading(false);
         setNewSuccess(true);
         setTimeout(() => setNewSuccess(false), 3000);
@@ -188,12 +188,25 @@ export default function ProductionPage() {
         setTab("status");
     };
 
+    // 배치 행 업데이트
+    const updateBatchRow = (i: number, field: keyof BatchRow, value: string) => {
+        setBatchRows(rows => rows.map((r, idx) => {
+            if (idx !== i) return r;
+            const updated = { ...r, [field]: value };
+            // main_category 바뀌면 sub_category 초기화
+            if (field === "main_category") updated.sub_category = "";
+            return updated;
+        }));
+    };
+
+    const addBatchRow = () => setBatchRows(rows => [...rows, emptyRow()]);
+    const removeBatchRow = (i: number) => setBatchRows(rows => rows.filter((_, idx) => idx !== i));
+
     // 메인 카테고리 목록 (hombre/mujer 등 unique 값)
     const mainCategories = [...new Set(categories.map(c => c.main_category).filter(Boolean))];
-    // 선택된 메인 카테고리 내의 서브카테고리 목록
-    const subCategories = categories
-        .filter(c => c.main_category === newForm.main_category)
-        .map(c => c.name);
+    // 특정 행의 서브카테고리 목록
+    const getSubCats = (mainCat: string) =>
+        categories.filter(c => c.main_category === mainCat).map(c => c.name);
 
     const filtered = filterStage === "all" ? orders : orders.filter(o => o.stage === filterStage);
 
@@ -298,78 +311,98 @@ export default function ProductionPage() {
                 </>
             )}
 
-            {/* ─── 탭2: 신규 등록 ─── */}
+            {/* ─── 탭2: 신규 등록 (배치) ─── */}
             {tab === "new" && (
                 <div className={styles.newForm}>
                     <h2 className={styles.formTitle}>{lang === "ko" ? "신규 생산 공정 등록" : "Registrar Nueva Orden"}</h2>
                     {newSuccess && (
                         <div className={styles.successMsg}>
-                            ✅ {lang === "ko" ? "등록되었습니다!" : "¡Orden registrada!"}
+                            ✅ {lang === "ko" ? "등록되었습니다!" : "¡Orden(es) registrada(s)!"}
                         </div>
                     )}
 
-                    <div className={styles.formGrid}>
-                        <div className={styles.formGroup}>
-                            <label>{lang === "ko" ? "메인 카테고리" : "Categoría principal"}</label>
-                            <select
-                                value={newForm.main_category}
-                                onChange={e => setNewForm(f => ({ ...f, main_category: e.target.value, sub_category: "" }))}
-                            >
-                                <option value="">{lang === "ko" ? "선택..." : "Seleccionar..."}</option>
-                                {mainCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                        </div>
-                        {subCategories.length > 0 && (
-                            <div className={styles.formGroup}>
-                                <label>{lang === "ko" ? "서브 카테고리" : "Subcategoría"}</label>
-                                <select
-                                    value={newForm.sub_category}
-                                    onChange={e => setNewForm(f => ({ ...f, sub_category: e.target.value }))}
-                                >
-                                    <option value="">{lang === "ko" ? "선택..." : "Seleccionar..."}</option>
-                                    {subCategories.map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
-                            </div>
-                        )}
-                        <div className={styles.formGroup}>
-                            <label>{lang === "ko" ? "색상" : "Color"}</label>
-                            <input
-                                type="text"
-                                placeholder="ej. Negro"
-                                value={newForm.color}
-                                onChange={e => setNewForm(f => ({ ...f, color: e.target.value }))}
-                            />
-                        </div>
-                        <div className={styles.formGroup}>
-                            <label>{lang === "ko" ? "사이즈" : "Talla"}</label>
-                            <input
-                                type="text"
-                                placeholder="ej. M, L, 42"
-                                value={newForm.size}
-                                onChange={e => setNewForm(f => ({ ...f, size: e.target.value }))}
-                            />
-                        </div>
-                        <div className={styles.formGroup}>
-                            <label>{lang === "ko" ? "수량" : "Cantidad"}</label>
-                            <input
-                                type="number"
-                                min="1"
-                                placeholder="0"
-                                value={newForm.quantity}
-                                onChange={e => setNewForm(f => ({ ...f, quantity: e.target.value }))}
-                            />
-                        </div>
+                    {/* 공통 색상 */}
+                    <div className={styles.colorRow}>
+                        <label className={styles.colorLabel}>{lang === "ko" ? "🎨 공통 색상 (Color):" : "🎨 Color (común):"}</label>
+                        <input
+                            className={styles.colorInput}
+                            type="text"
+                            placeholder="ej. Negro, Azul..."
+                            value={batchColor}
+                            onChange={e => setBatchColor(e.target.value)}
+                        />
                     </div>
+
+                    {/* 행 목록 */}
+                    <div className={styles.batchTable}>
+                        {/* 헤더 */}
+                        <div className={styles.batchHeader}>
+                            <span>{lang === "ko" ? "분류" : "Categoría"}</span>
+                            <span>{lang === "ko" ? "서브카테고리" : "Subcategoría"}</span>
+                            <span>{lang === "ko" ? "사이즈" : "Talla"}</span>
+                            <span>{lang === "ko" ? "수량" : "Cant."}</span>
+                            <span></span>
+                        </div>
+                        {batchRows.map((row, i) => (
+                            <div key={i} className={styles.batchRow}>
+                                {/* 메인 카테고리 */}
+                                <select
+                                    value={row.main_category}
+                                    onChange={e => updateBatchRow(i, "main_category", e.target.value)}
+                                >
+                                    <option value="">{lang === "ko" ? "선택" : "Sel."}</option>
+                                    {mainCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                                {/* 서브 카테고리 */}
+                                <select
+                                    value={row.sub_category}
+                                    onChange={e => updateBatchRow(i, "sub_category", e.target.value)}
+                                    disabled={!row.main_category}
+                                >
+                                    <option value="">{lang === "ko" ? "선택" : "Sel."}</option>
+                                    {getSubCats(row.main_category).map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                                {/* 사이즈 */}
+                                <input
+                                    type="text"
+                                    placeholder="M, L, 42..."
+                                    value={row.size}
+                                    onChange={e => updateBatchRow(i, "size", e.target.value)}
+                                />
+                                {/* 수량 */}
+                                <input
+                                    type="number"
+                                    min="1"
+                                    placeholder="0"
+                                    value={row.quantity}
+                                    onChange={e => updateBatchRow(i, "quantity", e.target.value)}
+                                />
+                                {/* 삭제 */}
+                                <button
+                                    className={styles.removeRowBtn}
+                                    onClick={() => removeBatchRow(i)}
+                                    disabled={batchRows.length === 1}
+                                    title="Remove"
+                                >✕</button>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* 행 추가 버튼 */}
+                    <button className={styles.addRowBtn} onClick={addBatchRow}>
+                        + {lang === "ko" ? "항목 추가" : "Agregar fila"}
+                    </button>
 
                     <button
                         className={styles.submitBtn}
                         onClick={submitNew}
-                        disabled={newLoading || !newForm.main_category || !newForm.quantity}
+                        disabled={newLoading || batchRows.every(r => !r.main_category || !r.quantity)}
                     >
-                        {newLoading ? "..." : (lang === "ko" ? "🏭 재단 시작" : "🏭 Iniciar corte")}
+                        {newLoading ? "..." : (lang === "ko" ? `🏭 재단 시작 (${batchRows.filter(r => r.main_category && r.quantity).length}건)` : `🏭 Iniciar corte (${batchRows.filter(r => r.main_category && r.quantity).length})`)}
                     </button>
                 </div>
             )}
+
 
             {/* ─── 봉제 공장 선택 모달 ─── */}
             {factoryModal && (

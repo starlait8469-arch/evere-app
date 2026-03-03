@@ -350,3 +350,142 @@
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+/* ─── Batch Form ─── */
+.colorRow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.colorLabel {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.colorInput {
+    flex: 1;
+    min-width: 160px;
+    padding: 9px 12px;
+    border: 1.5px solid var(--primary);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--bg-main);
+    color: var(--text-primary);
+}
+
+.colorInput:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.batchTable {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow-x: auto;
+    margin-bottom: 12px;
+}
+
+.batchHeader {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr 0.8fr 0.7fr 36px;
+    gap: 0;
+    padding: 10px 12px;
+    background: rgba(0, 0, 0, 0.025);
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.batchRow {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr 0.8fr 0.7fr 36px;
+    gap: 0;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+}
+
+.batchRow:last-child {
+    border-bottom: none;
+}
+
+.batchRow select,
+.batchRow input[type="text"],
+.batchRow input[type="number"] {
+    width: 100%;
+    padding: 7px 8px;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    background: var(--bg-main);
+    color: var(--text-primary);
+    margin: 0 4px 0 0;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.batchRow select:focus,
+.batchRow input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.batchRow select:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.removeRowBtn {
+    width: 28px;
+    height: 28px;
+    border: 1.5px solid var(--border);
+    background: transparent;
+    border-radius: 6px;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    padding: 0;
+}
+
+.removeRowBtn:not(:disabled):hover {
+    background: #ef4444;
+    border-color: #ef4444;
+    color: white;
+}
+
+.removeRowBtn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.addRowBtn {
+    width: 100%;
+    padding: 9px;
+    border: 1.5px dashed var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 16px;
+    transition: all 0.15s;
+}
+
+.addRowBtn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
