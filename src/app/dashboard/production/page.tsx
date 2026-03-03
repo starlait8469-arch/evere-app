@@ -14,6 +14,8 @@ type ProductionOrder = {
     color: string;
     size: string;
     quantity: number;
+    original_qty: number | null;       // 재단 원래 수량
+    sewing_returned_qty: number | null; // 봉제에서 돌아온 수량
     stage: Stage;
     factory_id: string | null;
     created_at: string;
@@ -192,8 +194,12 @@ export default function ProductionPage() {
                 .eq("id", order.id);
         } else {
             // 수량 변경 + 단계 업데이트
+            // 봉제 단계에서 다음으로 넘어갈 때 sewing_returned_qty 기록
+            const extraFields = order.stage === "sewing"
+                ? { sewing_returned_qty: realQty }
+                : {};
             await supabase.from("production_orders")
-                .update({ stage: nextStage, quantity: realQty })
+                .update({ stage: nextStage, quantity: realQty, ...extraFields })
                 .eq("id", order.id);
         }
         fetchOrders();
@@ -261,7 +267,7 @@ export default function ProductionPage() {
         if (!planchaModal) return;
         for (const item of planchaModal) {
             await supabase.from("production_orders")
-                .update({ stage: "finishing", quantity: item.qty })
+                .update({ stage: "finishing", quantity: item.qty, sewing_returned_qty: item.qty })
                 .eq("id", item.order.id);
         }
         const date = new Date().toLocaleDateString("es-AR");
@@ -533,6 +539,7 @@ export default function ProductionPage() {
             color: batchColor,
             size: r.size,
             quantity: parseInt(r.quantity, 10),
+            original_qty: parseInt(r.quantity, 10),
             stage: "cutting" as Stage,
             created_by: user?.id || null,
         }));
@@ -736,9 +743,32 @@ export default function ProductionPage() {
                                                                 🏭 {order.sewing_factories.name}
                                                             </div>
                                                         )}
+                                                        {/* 봉제 손실 표시 (sewing_returned_qty < original_qty) */}
+                                                        {order.sewing_returned_qty != null && order.original_qty != null && order.sewing_returned_qty < order.original_qty && (
+                                                            <div className={styles.lossRow}>
+                                                                <span className={styles.lossBadge}>
+                                                                    🪡 {lang === "ko"
+                                                                        ? `봉제 -${order.original_qty - order.sewing_returned_qty}개`
+                                                                        : `Costura -${order.original_qty - order.sewing_returned_qty}`}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        {/* plancha 손실 표시 (quantity < sewing_returned_qty, finishing 이후) */}
+                                                        {(order.stage === "finishing" || order.stage === "done") &&
+                                                            order.sewing_returned_qty != null &&
+                                                            order.quantity < order.sewing_returned_qty && (
+                                                                <div className={styles.lossRow}>
+                                                                    <span className={styles.lossBadge} style={{ background: "rgba(139,92,246,0.12)", color: "#8b5cf6" }}>
+                                                                        🔧 {lang === "ko"
+                                                                            ? `plancha -${order.sewing_returned_qty - order.quantity}개`
+                                                                            : `Plancha -${order.sewing_returned_qty - order.quantity}`}
+                                                                    </span>
+                                                                </div>
+                                                            )}
                                                         <div className={styles.cardDate}>
                                                             {new Date(order.created_at).toLocaleDateString()}
                                                         </div>
+
                                                         <div className={styles.cardActions}>
                                                             {isAdmin && (
                                                                 <>

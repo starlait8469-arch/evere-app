@@ -898,3 +898,21 @@
     color: var(--text-primary);
     flex-wrap: wrap;
 }
+
+/* ─── Loss Badge ─── */
+.lossRow {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 2px;
+}
+
+.lossBadge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border-radius: 99px;
+    letter-spacing: 0.2px;
+}
