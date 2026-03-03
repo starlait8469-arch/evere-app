@@ -33,8 +33,8 @@ type Category = {
 
 const STAGES: { key: Stage; ko: string; es: string; color: string }[] = [
     { key: "cutting", ko: "재단중", es: "En corte", color: "#f59e0b" },
-    { key: "sewing", ko: "봉제중", es: "En costura", color: "#3b82f6" },
-    { key: "finishing", ko: "완성중", es: "En terminación", color: "#8b5cf6" },
+    { key: "sewing", ko: "봉제 보내기", es: "En costura", color: "#3b82f6" },
+    { key: "finishing", ko: "plancha 보내기", es: "En plancha", color: "#8b5cf6" },
     { key: "done", ko: "입고완료", es: "Ingresado", color: "#10b981" },
 ];
 
