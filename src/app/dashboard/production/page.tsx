@@ -70,7 +70,8 @@ export default function ProductionPage() {
     const [newFabricName, setNewFabricName] = useState("");
     const [newFabricUnit, setNewFabricUnit] = useState("m");
     const [addingFabric, setAddingFabric] = useState(false);
-    const [fabricAdjusts, setFabricAdjusts] = useState<Record<string, string>>({});
+    const [fabricAction, setFabricAction] = useState<{ id: string; type: "in" | "out"; val: string } | null>(null);
+    const [lastFabricOp, setLastFabricOp] = useState<{ id: string; name: string; prevQty: number; newQty: number } | null>(null);
 
     // 신규 등록 폼 - 배치 방식 (색상 공통, 여러 행)
     const [categories, setCategories] = useState<Category[]>([]);
@@ -151,20 +152,26 @@ export default function ProductionPage() {
         fetchFabrics();
     };
 
-    const adjustFabric = async (id: string, delta: number) => {
-        const item = fabrics.find(f => f.id === id);
+    const confirmFabricAction = async () => {
+        if (!fabricAction) return;
+        const amt = parseFloat(fabricAction.val);
+        if (isNaN(amt) || amt <= 0) return;
+        const item = fabrics.find(f => f.id === fabricAction.id);
         if (!item) return;
-        const newQty = Math.max(0, item.quantity + delta);
-        await supabase.from("fabric_inventory").update({ quantity: newQty }).eq("id", id);
+        const newQty = fabricAction.type === "in"
+            ? item.quantity + amt
+            : Math.max(0, item.quantity - amt);
+        setLastFabricOp({ id: item.id, name: item.name, prevQty: item.quantity, newQty });
+        await supabase.from("fabric_inventory").update({ quantity: newQty }).eq("id", fabricAction.id);
+        setFabricAction(null);
         fetchFabrics();
     };
 
-    const setFabricQty = async (id: string, val: string) => {
-        const qty = parseFloat(val);
-        if (isNaN(qty) || qty < 0) return;
-        await supabase.from("fabric_inventory").update({ quantity: qty }).eq("id", id);
+    const undoFabricOp = async () => {
+        if (!lastFabricOp) return;
+        await supabase.from("fabric_inventory").update({ quantity: lastFabricOp.prevQty }).eq("id", lastFabricOp.id);
+        setLastFabricOp(null);
         fetchFabrics();
-        setFabricAdjusts(prev => { const n = { ...prev }; delete n[id]; return n; });
     };
 
     const deleteFabric = async (id: string) => {
@@ -1295,6 +1302,21 @@ export default function ProductionPage() {
                         )}
                     </div>
 
+                    {/* 롤백 토스트 */}
+                    {lastFabricOp && (
+                        <div className={styles.fabricToast}>
+                            <span>
+                                {lang === "ko"
+                                    ? `"${lastFabricOp.name}" ${lastFabricOp.prevQty} → ${lastFabricOp.newQty}${fabrics.find(f => f.id === lastFabricOp.id)?.unit ?? ""}`
+                                    : `"${lastFabricOp.name}" ${lastFabricOp.prevQty} → ${lastFabricOp.newQty}${fabrics.find(f => f.id === lastFabricOp.id)?.unit ?? ""}`}
+                            </span>
+                            <button className={styles.fabricUndoBtn} onClick={undoFabricOp}>
+                                ↩ {lang === "ko" ? "롤백" : "Revertir"}
+                            </button>
+                            <button className={styles.fabricToastClose} onClick={() => setLastFabricOp(null)}>✕</button>
+                        </div>
+                    )}
+
                     {/* 신규 원단 추가 폼 (관리자) */}
                     {addingFabric && (
                         <div className={styles.fabricAddForm}>
@@ -1323,31 +1345,65 @@ export default function ProductionPage() {
                         </div>
                     ) : (
                         <div className={styles.fabricList}>
-                            {fabrics.map(f => (
-                                <div key={f.id} className={styles.fabricCard}>
-                                    <div className={styles.fabricName}>{f.name}</div>
-                                    <div className={styles.fabricControls}>
-                                        <button className={styles.fabricAdjBtn} onClick={() => adjustFabric(f.id, -1)}>−</button>
-                                        <input
-                                            type="number"
-                                            className={styles.fabricQtyInput}
-                                            value={fabricAdjusts[f.id] !== undefined ? fabricAdjusts[f.id] : f.quantity}
-                                            onChange={e => setFabricAdjusts(prev => ({ ...prev, [f.id]: e.target.value }))}
-                                            onBlur={e => setFabricQty(f.id, e.target.value)}
-                                            onKeyDown={e => e.key === "Enter" && setFabricQty(f.id, (fabricAdjusts[f.id] ?? String(f.quantity)))}
-                                        />
-                                        <span className={styles.fabricUnit}>{f.unit}</span>
-                                        <button className={styles.fabricAdjBtn} onClick={() => adjustFabric(f.id, 1)}>+</button>
+                            {fabrics.map(f => {
+                                const isActive = fabricAction?.id === f.id;
+                                return (
+                                    <div key={f.id} className={`${styles.fabricCard} ${isActive ? styles.fabricCardActive : ""}`}>
+                                        {/* 이름 + 현재 재고 */}
+                                        <div className={styles.fabricCardTop}>
+                                            <span className={styles.fabricName}>{f.name}</span>
+                                            <span className={styles.fabricQtyDisplay}>{f.quantity}<span className={styles.fabricUnit}>{f.unit}</span></span>
+                                            {isAdmin && (
+                                                <button className={styles.fabricDelBtn} onClick={() => deleteFabric(f.id)}>🗑</button>
+                                            )}
+                                        </div>
+
+                                        {/* 입고/출고 버튼 or 인라인 입력 */}
+                                        {!isActive ? (
+                                            <div className={styles.fabricBtns}>
+                                                <button
+                                                    className={styles.fabricInBtn}
+                                                    onClick={() => setFabricAction({ id: f.id, type: "in", val: "" })}
+                                                >
+                                                    ＋ {lang === "ko" ? "입고" : "Entrada"}
+                                                </button>
+                                                <button
+                                                    className={styles.fabricOutBtn}
+                                                    onClick={() => setFabricAction({ id: f.id, type: "out", val: "" })}
+                                                >
+                                                    － {lang === "ko" ? "출고" : "Salida"}
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className={styles.fabricActionRow}>
+                                                <span className={fabricAction.type === "in" ? styles.fabricInLabel : styles.fabricOutLabel}>
+                                                    {fabricAction.type === "in"
+                                                        ? (lang === "ko" ? "입고 수량" : "Entrada")
+                                                        : (lang === "ko" ? "출고 수량" : "Salida")}
+                                                </span>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    autoFocus
+                                                    className={styles.fabricActionInput}
+                                                    placeholder="0"
+                                                    value={fabricAction.val}
+                                                    onChange={e => setFabricAction(prev => prev ? { ...prev, val: e.target.value } : null)}
+                                                    onKeyDown={e => { if (e.key === "Enter") confirmFabricAction(); if (e.key === "Escape") setFabricAction(null); }}
+                                                />
+                                                <span className={styles.fabricUnit}>{f.unit}</span>
+                                                <button className={styles.fabricConfirmBtn} onClick={confirmFabricAction}>✓</button>
+                                                <button className={styles.fabricCancelBtn} onClick={() => setFabricAction(null)}>✕</button>
+                                            </div>
+                                        )}
                                     </div>
-                                    {isAdmin && (
-                                        <button className={styles.fabricDelBtn} onClick={() => deleteFabric(f.id)}>🗑</button>
-                                    )}
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
             )}
+
         </div>
     );
 }

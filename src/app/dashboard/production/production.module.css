@@ -1072,7 +1072,7 @@
 }
 
 .fabricQtyInput {
-    width: 60px;
+    width: 80px;
     text-align: center;
     font-size: 16px;
     font-weight: 800;
@@ -1114,4 +1114,147 @@
 
 .fabricDelBtn:hover {
     opacity: 1;
+}
+
+/* ─── Redesigned fabric card ─── */
+.fabricCardActive {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.fabricCardTop {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.fabricQtyDisplay {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+    flex-shrink: 0;
+}
+
+.fabricBtns {
+    display: flex;
+    gap: 8px;
+}
+
+.fabricInBtn {
+    flex: 1;
+    padding: 8px 0;
+    background: rgba(5, 150, 105, 0.1);
+    color: #059669;
+    border: 1.5px solid rgba(5, 150, 105, 0.25);
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.fabricInBtn:hover {
+    background: rgba(5, 150, 105, 0.18);
+}
+
+.fabricOutBtn {
+    flex: 1;
+    padding: 8px 0;
+    background: rgba(239, 68, 68, 0.08);
+    color: #ef4444;
+    border: 1.5px solid rgba(239, 68, 68, 0.2);
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.fabricOutBtn:hover {
+    background: rgba(239, 68, 68, 0.14);
+}
+
+.fabricActionRow {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.fabricInLabel {
+    font-size: 12px;
+    font-weight: 700;
+    color: #059669;
+    white-space: nowrap;
+}
+
+.fabricOutLabel {
+    font-size: 12px;
+    font-weight: 700;
+    color: #ef4444;
+    white-space: nowrap;
+}
+
+.fabricActionInput {
+    width: 70px;
+    padding: 7px 6px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--text-primary);
+    border: 1.5px solid var(--primary);
+    border-radius: 8px;
+    background: var(--bg-main);
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.fabricActionInput::-webkit-inner-spin-button,
+.fabricActionInput::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+}
+
+.fabricActionInput:focus {
+    outline: none;
+}
+
+/* Toast */
+.fabricToast {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    flex-wrap: wrap;
+}
+
+.fabricUndoBtn {
+    padding: 5px 12px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s;
+}
+
+.fabricUndoBtn:hover {
+    opacity: 0.85;
+}
+
+.fabricToastClose {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 13px;
+    padding: 2px 4px;
 }
