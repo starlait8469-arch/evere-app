@@ -1,9 +1,9 @@
 .page {
-    max-width: 1300px;
+    max-width: 1100px;
 }
 
 .header {
-    margin-bottom: 20px;
+    margin-bottom: 24px;
 }
 
 .title {
@@ -19,205 +19,86 @@
     color: var(--text-muted);
 }
 
-/* ─── Layout ─── */
-.layout {
-    display: grid;
-    grid-template-columns: 1fr 340px;
-    gap: 20px;
-    align-items: flex-start;
-}
-
-@media (max-width: 900px) {
-    .layout {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* ─── Inventory Panel ─── */
-.inventoryPanel {
+/* ─── Form Card ─── */
+.formCard {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 16px;
-    padding: 18px;
-    min-height: 60vh;
+    padding: 20px;
 }
 
-.filterBar {
-    display: flex;
+/* ─── Row Header ─── */
+.rowsHeader {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 110px 32px;
     gap: 8px;
-    flex-wrap: wrap;
-    align-items: center;
-    margin-bottom: 16px;
-}
-
-.catTab {
-    padding: 6px 14px;
-    border: 1.5px solid var(--border);
-    background: var(--bg-main);
-    color: var(--text-secondary);
-    border-radius: 99px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s;
-}
-
-.catTab:hover {
-    border-color: var(--primary);
-    color: var(--primary);
-}
-
-.catActive {
-    background: var(--primary);
-    border-color: var(--primary);
-    color: white;
-}
-
-.searchInput {
-    padding: 7px 12px;
-    border: 1.5px solid var(--border);
-    border-radius: 8px;
-    font-size: 13px;
-    background: var(--bg-main);
-    color: var(--text-primary);
-    flex: 1;
-    min-width: 160px;
-}
-
-.searchInput:focus {
-    outline: none;
-    border-color: var(--primary);
-}
-
-.inventoryGroups {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.invGroup {}
-
-.invGroupHeader {
-    font-size: 12px;
-    font-weight: 800;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding: 6px 0;
+    padding: 0 4px 8px;
     border-bottom: 1.5px solid var(--border);
     margin-bottom: 10px;
 }
 
-.invItems {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 10px;
-}
-
-.invCard {
-    background: var(--bg-main);
-    border: 1.5px solid var(--border);
-    border-radius: 12px;
-    padding: 12px;
-    transition: all 0.15s;
-}
-
-.invCard:hover {
-    border-color: var(--primary);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
-}
-
-.invCardInCart {
-    border-color: #059669;
-    background: rgba(5, 150, 105, 0.05);
-}
-
-.invCardTop {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 6px;
-    margin-bottom: 10px;
-}
-
-.invTags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-}
-
-.invStock {
+.colLabel {
     font-size: 11px;
+    font-weight: 700;
     color: var(--text-muted);
-    font-weight: 600;
-    white-space: nowrap;
-    flex-shrink: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
 }
 
-.invCardBottom {
-    display: flex;
-    flex-direction: column;
+/* ─── Order Row ─── */
+.orderRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 110px 32px;
     gap: 8px;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
 }
 
-.addBtn {
-    width: 100%;
-    padding: 7px;
-    background: var(--primary);
-    color: white;
-    border: none;
+.orderRow:last-of-type {
+    border-bottom: none;
+}
+
+.sel {
+    padding: 8px 10px;
+    border: 1.5px solid var(--border);
     border-radius: 8px;
     font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: opacity 0.2s;
-}
-
-.addBtn:hover {
-    opacity: 0.85;
-}
-
-/* ─── Qty row ─── */
-.qtyRow {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.qtyBtn {
-    width: 28px;
-    height: 28px;
-    border: 1.5px solid var(--border);
-    background: var(--bg-card);
-    border-radius: 6px;
-    font-size: 16px;
-    font-weight: 700;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background: var(--bg-main);
     color: var(--text-primary);
-    transition: all 0.15s;
-    flex-shrink: 0;
+    width: 100%;
+    cursor: pointer;
+    transition: border-color 0.15s;
 }
 
-.qtyBtn:hover {
+.sel:focus {
+    outline: none;
     border-color: var(--primary);
-    color: var(--primary);
+}
+
+.sel:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ─── Qty cell ─── */
+.qtyCell {
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .qtyInput {
     flex: 1;
     min-width: 0;
-    width: 0;
-    text-align: center;
-    font-size: 15px;
-    font-weight: 800;
-    color: var(--text-primary);
+    padding: 8px 6px;
     border: 1.5px solid var(--border);
-    border-radius: 6px;
-    padding: 4px 2px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
     background: var(--bg-main);
+    color: var(--text-primary);
     -moz-appearance: textfield;
     appearance: textfield;
 }
@@ -225,12 +106,144 @@
 .qtyInput::-webkit-inner-spin-button,
 .qtyInput::-webkit-outer-spin-button {
     -webkit-appearance: none;
-    margin: 0;
 }
 
 .qtyInput:focus {
     outline: none;
     border-color: var(--primary);
+}
+
+.maxHint {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* ─── Remove button ─── */
+.removeBtn {
+    width: 32px;
+    height: 32px;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    background: none;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #ef4444;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+    flex-shrink: 0;
+}
+
+.removeBtn:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.removeBtn:disabled {
+    opacity: 0.2;
+    cursor: not-allowed;
+}
+
+/* ─── Add row ─── */
+.addRowBtn {
+    margin-top: 12px;
+    padding: 9px 18px;
+    border: 1.5px dashed var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.15s;
+}
+
+.addRowBtn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: rgba(var(--primary-rgb, 79, 70, 229), 0.04);
+}
+
+/* ─── Footer ─── */
+.footer {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1.5px solid var(--border);
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.noteInput {
+    flex: 1;
+    min-width: 200px;
+    padding: 10px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-size: 13px;
+    background: var(--bg-main);
+    color: var(--text-primary);
+    resize: none;
+    font-family: inherit;
+}
+
+.noteInput:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.footerRight {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.totalRow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.totalLabel {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.totalVal {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -1px;
+}
+
+.submitBtn {
+    padding: 13px 28px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    letter-spacing: -0.2px;
+    white-space: nowrap;
+}
+
+.submitBtn:hover:not(:disabled) {
+    opacity: 0.88;
+}
+
+.submitBtn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
 }
 
 /* ─── Tag ─── */
@@ -244,193 +257,7 @@
     border: 1px solid var(--border);
 }
 
-/* ─── Cart Panel ─── */
-.cartPanel {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 18px;
-    position: sticky;
-    top: 80px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-}
-
-.cartHeader {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.cartTitle {
-    font-size: 17px;
-    font-weight: 800;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.cartBadge {
-    font-size: 12px;
-    font-weight: 800;
-    background: var(--primary);
-    color: white;
-    padding: 1px 8px;
-    border-radius: 99px;
-}
-
-.clearBtn {
-    font-size: 12px;
-    color: #ef4444;
-    font-weight: 600;
-    background: none;
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    border-radius: 6px;
-    padding: 4px 10px;
-    cursor: pointer;
-    transition: all 0.15s;
-}
-
-.clearBtn:hover {
-    background: rgba(239, 68, 68, 0.07);
-}
-
-.cartEmpty {
-    text-align: center;
-    padding: 40px 20px;
-    color: var(--text-muted);
-    font-size: 13px;
-    border: 1.5px dashed var(--border);
-    border-radius: 10px;
-}
-
-.cartItems {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    max-height: 400px;
-    overflow-y: auto;
-}
-
-.cartItem {
-    background: var(--bg-muted);
-    border-radius: 10px;
-    padding: 10px 12px;
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-.cartItemInfo {
-    flex: 1;
-    min-width: 0;
-}
-
-.cartItemName {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text-primary);
-    display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    margin-bottom: 4px;
-}
-
-.cartItemTags {
-    display: flex;
-    gap: 4px;
-    flex-wrap: wrap;
-}
-
-.cartItemActions {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
-}
-
-.removeBtn {
-    width: 26px;
-    height: 26px;
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    background: none;
-    border-radius: 6px;
-    font-size: 12px;
-    color: #ef4444;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.15s;
-    flex-shrink: 0;
-}
-
-.removeBtn:hover {
-    background: rgba(239, 68, 68, 0.1);
-}
-
-.cartTotal {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 14px;
-    background: var(--bg-muted);
-    border-radius: 10px;
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text-secondary);
-}
-
-.cartTotalQty {
-    font-size: 20px;
-    font-weight: 800;
-    color: var(--text-primary);
-}
-
-.noteInput {
-    padding: 10px 12px;
-    border: 1.5px solid var(--border);
-    border-radius: 10px;
-    font-size: 13px;
-    background: var(--bg-main);
-    color: var(--text-primary);
-    resize: none;
-    width: 100%;
-    font-family: inherit;
-}
-
-.noteInput:focus {
-    outline: none;
-    border-color: var(--primary);
-}
-
-.submitBtn {
-    width: 100%;
-    padding: 13px;
-    background: var(--primary);
-    color: white;
-    border: none;
-    border-radius: 12px;
-    font-size: 15px;
-    font-weight: 800;
-    cursor: pointer;
-    transition: opacity 0.2s;
-    letter-spacing: -0.2px;
-}
-
-.submitBtn:hover:not(:disabled) {
-    opacity: 0.88;
-}
-
-.submitBtn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-/* ─── Slip Modal ─── */
+/* ─── Modal ─── */
 .modalOverlay {
     position: fixed;
     inset: 0;
