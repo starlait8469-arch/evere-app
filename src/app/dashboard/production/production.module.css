@@ -514,3 +514,90 @@
     border-color: var(--primary);
     color: var(--primary);
 }
+
+/* ─── Admin Buttons ─── */
+.editBtn,
+.deleteCardBtn {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border: 1.5px solid var(--border);
+    background: transparent;
+    border-radius: 7px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    padding: 0;
+}
+
+.editBtn:hover {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: var(--primary);
+}
+
+.deleteCardBtn:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: #ef4444;
+}
+
+.btnDelete {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: #ef4444;
+    color: white;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.btnDelete:hover {
+    opacity: 0.85;
+}
+
+/* ─── Edit Modal Form ─── */
+.editGrid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.editGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.editGroup label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.editGroup input,
+.editGroup select {
+    padding: 9px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--bg-main);
+    color: var(--text-primary);
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.editGroup input:focus,
+.editGroup select:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.editGroup select:disabled {
+    opacity: 0.4;
+}

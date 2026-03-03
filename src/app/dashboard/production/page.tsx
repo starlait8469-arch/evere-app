@@ -49,6 +49,9 @@ export default function ProductionPage() {
     const { lang } = useLanguage();
     const supabase = createClient();
 
+    // 관리자 여부
+    const [isAdmin, setIsAdmin] = useState(false);
+
     // 공정 현황
     const [orders, setOrders] = useState<ProductionOrder[]>([]);
     const [factories, setFactories] = useState<SewingFactory[]>([]);
@@ -75,12 +78,22 @@ export default function ProductionPage() {
     const [advanceModal, setAdvanceModal] = useState<{ order: ProductionOrder } | null>(null);
     // 롤백 확인 모달
     const [rollbackModal, setRollbackModal] = useState<{ order: ProductionOrder } | null>(null);
+    // 삭제 확인 모달 (관리자 전용)
+    const [deleteModal, setDeleteModal] = useState<{ order: ProductionOrder } | null>(null);
+    // 수정 모달 (관리자 전용)
+    const [editModal, setEditModal] = useState<ProductionOrder | null>(null);
+    const [editForm, setEditForm] = useState({ main_category: "", sub_category: "", color: "", size: "", quantity: "" });
 
     useEffect(() => {
+        // 관리자 체크
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session?.user.user_metadata?.role === "admin") setIsAdmin(true);
+        });
         fetchOrders();
         fetchFactories();
         fetchCategories();
     }, []);
+
 
     const fetchOrders = async () => {
         setLoading(true);
@@ -210,6 +223,49 @@ export default function ProductionPage() {
         fetchOrders();
     };
 
+
+    // 관리자 전용: 공정 카드 삭제
+    const doDelete = async () => {
+        if (!deleteModal) return;
+        const res = await fetch("/api/production-orders", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: deleteModal.order.id }),
+        });
+        setDeleteModal(null);
+        if (res.ok) fetchOrders();
+    };
+
+    // 관리자 전용: 수정 모달 열기
+    const openEdit = (order: ProductionOrder) => {
+        setEditModal(order);
+        setEditForm({
+            main_category: order.main_category,
+            sub_category: order.sub_category,
+            color: order.color,
+            size: order.size,
+            quantity: String(order.quantity),
+        });
+    };
+
+    // 관리자 전용: 수정 저장
+    const saveEdit = async () => {
+        if (!editModal) return;
+        await fetch("/api/production-orders", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                id: editModal.id,
+                main_category: editForm.main_category,
+                sub_category: editForm.sub_category,
+                color: editForm.color,
+                size: editForm.size,
+                quantity: parseInt(editForm.quantity, 10),
+            }),
+        });
+        setEditModal(null);
+        fetchOrders();
+    };
 
     const confirmFactory = async () => {
         if (!factoryModal || !selectedFactory) return;
@@ -353,6 +409,21 @@ export default function ProductionPage() {
                                             {new Date(order.created_at).toLocaleDateString()}
                                         </div>
                                         <div className={styles.cardActions}>
+                                            {/* 관리자 전용: 수정/삭제 버튼 */}
+                                            {isAdmin && (
+                                                <>
+                                                    <button
+                                                        className={styles.editBtn}
+                                                        onClick={() => openEdit(order)}
+                                                        title={lang === "ko" ? "수정" : "Editar"}
+                                                    >✏️</button>
+                                                    <button
+                                                        className={styles.deleteCardBtn}
+                                                        onClick={() => setDeleteModal({ order })}
+                                                        title={lang === "ko" ? "삭제" : "Eliminar"}
+                                                    >🗑️</button>
+                                                </>
+                                            )}
                                             {/* 이전 단계 롤백 버튼 (cutting 제외) */}
                                             {PREV_STAGE[order.stage] && (
                                                 <button
@@ -373,6 +444,7 @@ export default function ProductionPage() {
                                                     → {lang === "ko" ? nextInfo.ko : nextInfo.es}
                                                 </button>
                                             )}
+
                                         </div>
                                     </div>
                                 );
@@ -380,6 +452,73 @@ export default function ProductionPage() {
                         </div>
                     )}
                 </>
+            )}
+
+            {/* ─── 관리자 전용: 삭제 확인 모달 ─── */}
+            {deleteModal && (
+                <div className={styles.modalOverlay}>
+                    <div className={styles.modalBox}>
+                        <h3>🗑️ {lang === "ko" ? "공정 삭제" : "Eliminar orden"}</h3>
+                        <p className={styles.modalSub}>
+                            {lang === "ko"
+                                ? `"${deleteModal.order.sub_category || deleteModal.order.main_category}" (${deleteModal.order.quantity}개)을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`
+                                : `¿Eliminar "${deleteModal.order.sub_category || deleteModal.order.main_category}" (${deleteModal.order.quantity})? Esta acción no se puede deshacer.`}
+                        </p>
+                        <div className={styles.modalActions}>
+                            <button className={styles.btnCancel} onClick={() => setDeleteModal(null)}>
+                                {lang === "ko" ? "취소" : "Cancelar"}
+                            </button>
+                            <button className={styles.btnDelete} onClick={doDelete}>
+                                {lang === "ko" ? "삭제" : "Eliminar"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── 관리자 전용: 수정 모달 ─── */}
+            {editModal && (
+                <div className={styles.modalOverlay}>
+                    <div className={styles.modalBox} style={{ maxWidth: 420 }}>
+                        <h3>✏️ {lang === "ko" ? "공정 수정" : "Editar orden"}</h3>
+                        <div className={styles.editGrid}>
+                            <div className={styles.editGroup}>
+                                <label>{lang === "ko" ? "분류" : "Categoría"}</label>
+                                <select value={editForm.main_category} onChange={e => setEditForm(f => ({ ...f, main_category: e.target.value, sub_category: "" }))}>
+                                    <option value="">{lang === "ko" ? "선택" : "Sel."}</option>
+                                    {[...new Set(categories.map(c => c.main_category).filter(Boolean))].map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </div>
+                            <div className={styles.editGroup}>
+                                <label>{lang === "ko" ? "서브카테고리" : "Subcategoría"}</label>
+                                <select value={editForm.sub_category} onChange={e => setEditForm(f => ({ ...f, sub_category: e.target.value }))} disabled={!editForm.main_category}>
+                                    <option value="">{lang === "ko" ? "선택" : "Sel."}</option>
+                                    {categories.filter(c => c.main_category === editForm.main_category).map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                                </select>
+                            </div>
+                            <div className={styles.editGroup}>
+                                <label>{lang === "ko" ? "색상" : "Color"}</label>
+                                <input type="text" value={editForm.color} onChange={e => setEditForm(f => ({ ...f, color: e.target.value }))} />
+                            </div>
+                            <div className={styles.editGroup}>
+                                <label>{lang === "ko" ? "사이즈" : "Talla"}</label>
+                                <input type="text" value={editForm.size} onChange={e => setEditForm(f => ({ ...f, size: e.target.value }))} />
+                            </div>
+                            <div className={styles.editGroup}>
+                                <label>{lang === "ko" ? "수량" : "Cantidad"}</label>
+                                <input type="number" min="1" value={editForm.quantity} onChange={e => setEditForm(f => ({ ...f, quantity: e.target.value }))} />
+                            </div>
+                        </div>
+                        <div className={styles.modalActions} style={{ marginTop: 16 }}>
+                            <button className={styles.btnCancel} onClick={() => setEditModal(null)}>
+                                {lang === "ko" ? "취소" : "Cancelar"}
+                            </button>
+                            <button className={styles.btnConfirm} onClick={saveEdit}>
+                                {lang === "ko" ? "저장" : "Guardar"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* ─── 단계 이동 확인 모달 ─── */}
