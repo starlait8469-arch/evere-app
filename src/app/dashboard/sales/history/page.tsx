@@ -63,7 +63,7 @@ export default function SalesHistoryPage() {
                     quantity,
                     created_at,
                     inventory ( name, main_category, sub_category, color, size ),
-                    profiles:sold_by ( username, role )
+                    profiles ( username, role )
                 `)
                 .order("created_at", { ascending: false });
 
