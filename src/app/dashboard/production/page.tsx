@@ -201,6 +201,16 @@ export default function ProductionPage() {
             await supabase.from("production_orders")
                 .update({ stage: nextStage, quantity: realQty, ...extraFields })
                 .eq("id", order.id);
+
+            // 봉제 → plancha 이동 시 출고전표 인쇄 모달 표시
+            if (order.stage === "sewing") {
+                const date = new Date().toLocaleDateString("es-AR");
+                setPlanchaSlip({
+                    factoryName: "Plancha",
+                    date,
+                    orders: [{ ...order, quantity: realQty }],
+                });
+            }
         }
         fetchOrders();
     };
