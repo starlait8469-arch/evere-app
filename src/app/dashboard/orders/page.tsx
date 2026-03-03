@@ -141,6 +141,7 @@ export default function OrdersPage() {
     const printOrder = (data: NonNullable<typeof slipData>) => {
         const rows = data.items.map(item => `
             <tr>
+                <td class="check"><span class="box">□</span></td>
                 <td>${item.main_category}</td>
                 <td>${item.sub_category || "—"}</td>
                 <td>${item.color || "—"}</td>
@@ -156,13 +157,15 @@ export default function OrdersPage() {
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:'Helvetica Neue',Arial,sans-serif; padding:32px; color:#111; }
   .header { border-bottom:3px solid #111; padding-bottom:16px; margin-bottom:20px; }
-  .title { font-size:22px; font-weight:800; }
+  .title { font-size:22px; font-weight:800; letter-spacing:-0.5px; }
   .meta { margin-top:8px; display:flex; gap:32px; font-size:13px; color:#555; }
   .meta strong { color:#111; }
   table { width:100%; border-collapse:collapse; font-size:14px; }
   thead tr { background:#f0f0f0; }
-  th { padding:10px 12px; text-align:left; font-size:12px; font-weight:700; text-transform:uppercase; border-bottom:2px solid #ddd; }
-  td { padding:10px 12px; border-bottom:1px solid #eee; }
+  th { padding:10px 12px; text-align:left; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.3px; border-bottom:2px solid #ddd; }
+  td { padding:10px 12px; border-bottom:1px solid #eee; vertical-align:middle; }
+  td.check { width:36px; text-align:center; }
+  .box { font-size:18px; line-height:1; }
   tfoot td { font-weight:800; font-size:14px; background:#f9f9f9; border-top:2px solid #111; }
   .footer { margin-top:40px; display:flex; justify-content:space-between; }
   .sign { border-top:1px solid #aaa; padding-top:6px; min-width:120px; text-align:center; font-size:12px; color:#555; }
@@ -174,14 +177,29 @@ export default function OrdersPage() {
     <div class="title">Pedido</div>
     <div class="meta">
       <span>Fecha: <strong>${data.date}</strong></span>
-      <span>N° <strong>${data.orderId.slice(0, 8).toUpperCase()}</strong></span>
+      <span>N°: <strong>${data.orderId.slice(0, 8).toUpperCase()}</strong></span>
       <span>Total: <strong>${total}</strong> uds.</span>
     </div>
   </div>
   <table>
-    <thead><tr><th>Categoría</th><th>Subcategoría</th><th>Color</th><th>Talla</th><th style="text-align:center;">Cant.</th></tr></thead>
+    <thead>
+      <tr>
+        <th style="width:36px;">✓</th>
+        <th>Categoría</th>
+        <th>Subcategoría</th>
+        <th>Color</th>
+        <th>Talla</th>
+        <th style="text-align:center;">Cantidad</th>
+      </tr>
+    </thead>
     <tbody>${rows}</tbody>
-    <tfoot><tr><td colspan="4">Total</td><td style="text-align:center;">${total}</td></tr></tfoot>
+    <tfoot>
+      <tr>
+        <td></td>
+        <td colspan="4">Total</td>
+        <td style="text-align:center;">${total}</td>
+      </tr>
+    </tfoot>
   </table>
   <div class="footer">
     <div class="sign">Preparado por<br/><br/>__________________</div>
