@@ -19,7 +19,7 @@ type SalesHistoryItem = {
         size: string;
     } | null;
     profiles: {
-        full_name: string;
+        username: string;
         role: string;
     } | null;
 };
@@ -64,7 +64,7 @@ export default function SalesHistoryPage() {
                     quantity,
                     created_at,
                     inventory ( name, main_category, sub_category, color, size ),
-                    profiles!sales_history_sold_by_fkey ( full_name, role )
+                    profiles ( username, role )
                 `)
                 .order("created_at", { ascending: false });
 
@@ -128,7 +128,7 @@ export default function SalesHistoryPage() {
                                     </td>
                                     <td className={styles.qtyCell}>{item.quantity}</td>
                                     <td className={styles.userCell}>
-                                        {item.profiles?.full_name || "Unknown"}
+                                        {item.profiles?.username || "Unknown"}
                                     </td>
                                 </tr>
                             ))}
