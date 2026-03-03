@@ -6,7 +6,6 @@ import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "./factories.module.css";
 
-
 type Factory = {
     id: string;
     name: string;
@@ -24,9 +23,10 @@ export default function FactoriesPage() {
     const [newName, setNewName] = useState("");
     const [newNotes, setNewNotes] = useState("");
     const [saving, setSaving] = useState(false);
+    const [confirmId, setConfirmId] = useState<string | null>(null);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
 
     useEffect(() => {
-        // 관리자 체크
         const checkAndLoad = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) { router.replace("/auth/login"); return; }
@@ -63,21 +63,25 @@ export default function FactoriesPage() {
         setSaving(false);
     };
 
-    const deleteFactory = async (id: string) => {
-        if (!confirm(lang === "ko" ? "삭제하시겠습니까?" : "¿Eliminar este taller?")) return;
+    const doDelete = async () => {
+        if (!confirmId) return;
+        setDeleteError(null);
         const res = await fetch("/api/factories", {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id }),
+            body: JSON.stringify({ id: confirmId }),
         });
         if (res.ok) {
+            setConfirmId(null);
             fetchFactories();
         } else {
             const err = await res.json().catch(() => ({}));
-            alert("Error: " + (err.error || "Unknown"));
+            setDeleteError(err.error || "삭제 실패");
+            setConfirmId(null);
         }
     };
 
+    const confirmingFactory = factories.find(f => f.id === confirmId);
 
     return (
         <div className={styles.page}>
@@ -85,6 +89,10 @@ export default function FactoriesPage() {
                 <h1 className={styles.title}>{lang === "ko" ? "봉제공장 관리" : "Gestión de Talleres"}</h1>
                 <p className={styles.subtitle}>{lang === "ko" ? "봉제 공장 목록을 관리합니다 (관리자 전용)" : "Administra los talleres de costura (Solo Admin)"}</p>
             </div>
+
+            {deleteError && (
+                <div className={styles.errorMsg}>⚠️ {deleteError}</div>
+            )}
 
             {/* 추가 폼 */}
             <div className={styles.addCard}>
@@ -110,6 +118,28 @@ export default function FactoriesPage() {
                 </div>
             </div>
 
+            {/* 삭제 확인 모달 */}
+            {confirmingFactory && (
+                <div className={styles.modalOverlay}>
+                    <div className={styles.modalBox}>
+                        <h3>🗑️ {lang === "ko" ? "공장 삭제" : "Eliminar taller"}</h3>
+                        <p className={styles.modalSub}>
+                            {lang === "ko"
+                                ? `"${confirmingFactory.name}"을(를) 삭제하시겠습니까?`
+                                : `¿Eliminar "${confirmingFactory.name}"?`}
+                        </p>
+                        <div className={styles.modalActions}>
+                            <button className={styles.btnCancel} onClick={() => setConfirmId(null)}>
+                                {lang === "ko" ? "취소" : "Cancelar"}
+                            </button>
+                            <button className={styles.btnDelete} onClick={doDelete}>
+                                {lang === "ko" ? "삭제" : "Eliminar"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* 공장 목록 */}
             {loading ? (
                 <div className={styles.empty}>Loading...</div>
@@ -125,7 +155,7 @@ export default function FactoriesPage() {
                                 <div className={styles.factoryName}>🏭 {f.name}</div>
                                 {f.notes && <div className={styles.factoryNotes}>{f.notes}</div>}
                             </div>
-                            <button className={styles.deleteBtn} onClick={() => deleteFactory(f.id)}>
+                            <button className={styles.deleteBtn} onClick={() => setConfirmId(f.id)}>
                                 {lang === "ko" ? "삭제" : "Eliminar"}
                             </button>
                         </div>
