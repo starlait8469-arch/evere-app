@@ -808,6 +808,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    width: 100%;
 }
 
 .qtyBtn {
@@ -834,14 +835,25 @@
 
 .qtyInput {
     flex: 1;
+    min-width: 0;
+    width: 0;
     text-align: center;
     font-size: 22px;
     font-weight: 800;
     color: var(--text-primary);
     border: 1.5px solid var(--primary);
     border-radius: 8px;
-    padding: 6px;
+    padding: 6px 4px;
     background: var(--bg-main);
+    display: block;
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.qtyInput::-webkit-inner-spin-button,
+.qtyInput::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
 
 .qtyInput:focus {
