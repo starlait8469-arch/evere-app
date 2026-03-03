@@ -76,19 +76,6 @@ export default function DashboardHome({ inProgress, completed, totalInventory }:
                 </p>
             </div>
 
-            {/* Stats */}
-            <div className={styles.statsGrid}>
-                {stats.map((stat, i) => (
-                    <Link href={stat.href} key={i} className={styles.statCard}>
-                        <div className={styles.statIcon} style={{ background: stat.bg, color: stat.color }}>
-                            {stat.icon}
-                        </div>
-                        <div className={styles.statValue}>{stat.value.toLocaleString()}</div>
-                        <div className={styles.statLabel}>{stat.label}</div>
-                    </Link>
-                ))}
-            </div>
-
             {/* Quick links */}
             <div className={styles.section}>
                 <h2 className={styles.sectionTitle}>
@@ -108,6 +95,19 @@ export default function DashboardHome({ inProgress, completed, totalInventory }:
                         </Link>
                     ))}
                 </div>
+            </div>
+
+            {/* Stats */}
+            <div className={styles.statsGrid}>
+                {stats.map((stat, i) => (
+                    <Link href={stat.href} key={i} className={styles.statCard}>
+                        <div className={styles.statIcon} style={{ background: stat.bg, color: stat.color }}>
+                            {stat.icon}
+                        </div>
+                        <div className={styles.statValue}>{stat.value.toLocaleString()}</div>
+                        <div className={styles.statLabel}>{stat.label}</div>
+                    </Link>
+                ))}
             </div>
         </div>
     );
