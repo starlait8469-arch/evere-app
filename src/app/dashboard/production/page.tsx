@@ -28,8 +28,7 @@ type SewingFactory = {
 type Category = {
     id: string;
     name: string;
-    type: string;
-    sub_categories?: { id: string; name: string }[];
+    main_category: string;
 };
 
 const STAGES: { key: Stage; ko: string; es: string; color: string }[] = [
@@ -99,7 +98,7 @@ export default function ProductionPage() {
     const fetchCategories = async () => {
         const { data } = await supabase
             .from("categories")
-            .select("*, sub_categories(*)")
+            .select("*")
             .order("name");
         if (data) setCategories(data);
     };
@@ -189,9 +188,12 @@ export default function ProductionPage() {
         setTab("status");
     };
 
-    const mainCategories = [...new Set(categories.map(c => c.name))];
-    const selectedCat = categories.find(c => c.name === newForm.main_category);
-    const subCategories = selectedCat?.sub_categories?.map(s => s.name) ?? [];
+    // 메인 카테고리 목록 (hombre/mujer 등 unique 값)
+    const mainCategories = [...new Set(categories.map(c => c.main_category).filter(Boolean))];
+    // 선택된 메인 카테고리 내의 서브카테고리 목록
+    const subCategories = categories
+        .filter(c => c.main_category === newForm.main_category)
+        .map(c => c.name);
 
     const filtered = filterStage === "all" ? orders : orders.filter(o => o.stage === filterStage);
 
