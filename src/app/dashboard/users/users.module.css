@@ -90,7 +90,7 @@
 
 .input {
     padding: 10px 12px;
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(0, 0, 0, 0.04);
     border: 1px solid var(--border);
     border-radius: 9px;
     color: var(--text-primary);
@@ -162,14 +162,14 @@
     text-transform: uppercase;
     letter-spacing: 0.6px;
     border-bottom: 1px solid var(--border);
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(0, 0, 0, 0.02);
 }
 
 .table td {
     padding: 14px 16px;
     font-size: 14px;
     color: var(--text-secondary);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 .table tr:last-child td {
@@ -177,7 +177,7 @@
 }
 
 .table tbody tr:hover {
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(0, 0, 0, 0.02);
 }
 
 .userCell {

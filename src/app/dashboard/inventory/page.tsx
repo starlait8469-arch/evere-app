@@ -114,10 +114,22 @@ export default function InventoryPage() {
         .filter((c) => c.main_category === mainTab)
         .sort((a, b) => {
             const order = [
+                // Hombre
                 "Camisa ML (SH-01)",
                 "Camisa MC (SH-02)",
                 "Pantalon tropical (PH-01)",
-                "Saco tropical (CH-01)"
+                "Saco tropical (CH-01)",
+                // Mujer
+                "Camisa ML (S-01)",
+                "Camisa 3/4 (S-02)",
+                "Camisa MC (S-03)",
+                "Camisa Elastizada ML (S-04)",
+                "Pollera tropical (Sk-01)",
+                "Pantalon tropical (P-01)",
+                "Saco tropical (C-01)",
+                "Pantalon sastrera (P-02)",
+                "Saco Sastrera (C-02)",
+                "Pantalon gabardina (P-03)"
             ];
 
             const idxA = order.findIndex(o => o.toLowerCase() === a.name.toLowerCase());

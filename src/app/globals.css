@@ -7,21 +7,26 @@
   --primary-light: #818cf8;
   --accent: #f59e0b;
   --accent-light: #fcd34d;
-  --bg-dark: #0a0a0f;
-  --bg-card: #13131a;
-  --bg-card-hover: #1a1a24;
-  --border: rgba(255, 255, 255, 0.08);
-  --border-hover: rgba(99, 102, 241, 0.4);
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #475569;
+  /* Light Theme Colors */
+  --bg-dark: #f8fafc;
+  /* 배경 (아주 연한 회색/흰색 톤) */
+  --bg-card: #ffffff;
+  /* 카드 배경 (완전 흰색) */
+  --bg-card-hover: #f1f5f9;
+  --border: rgba(0, 0, 0, 0.1);
+  --border-hover: rgba(99, 102, 241, 0.5);
+  --text-primary: #0f172a;
+  /* 텍스트 (진한 남색/검정) */
+  --text-secondary: #475569;
+  --text-muted: #64748b;
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
   --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
-  --gradient-card: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.05) 100%);
-  --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.15);
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --gradient-card: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(139, 92, 246, 0.02) 100%);
+  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.15);
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.05);
+  /* 밝은 테마에 맞게 약한 그림자 */
 }
 
 * {
@@ -43,9 +48,18 @@ body {
 }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--bg-dark); }
-::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 3px; }
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 3px;
+}
 
 /* Buttons */
 .btn-primary {
@@ -109,23 +123,49 @@ body {
 
 /* Animations */
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 @keyframes glow-pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.8; }
+
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
 }
 
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(30px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 .animate-fade-in-up {
