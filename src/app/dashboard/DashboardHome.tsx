@@ -43,16 +43,22 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
     // ── 알림 카드 표시 (하루 안보기 상태 확인) ──
     const [showAlert, setShowAlert] = useState(false);
 
-    // 로컬 스토리지에 저장된 오늘 날짜와 현재 날짜를 비교
+    // 로컬 스토리지에 저장된 오늘 날짜와 현재 날짜를 비교 및 관리자 확인
     useEffect(() => {
-        if (hasNewFabricToday) {
-            const dismissedDate = localStorage.getItem("fabric_alert_dismissed");
-            const todayStr = new Date().toLocaleDateString();
-            if (dismissedDate !== todayStr) {
-                setShowAlert(true);
+        const checkAndSetAlert = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            const isAdmin = session?.user.user_metadata?.role === "admin";
+
+            if (hasNewFabricToday && isAdmin) {
+                const dismissedDate = localStorage.getItem("fabric_alert_dismissed");
+                const todayStr = new Date().toLocaleDateString();
+                if (dismissedDate !== todayStr) {
+                    setShowAlert(true);
+                }
             }
-        }
-    }, [hasNewFabricToday]);
+        };
+        checkAndSetAlert();
+    }, [hasNewFabricToday, supabase.auth]);
 
     const dismissAlert = () => {
         const todayStr = new Date().toLocaleDateString();
