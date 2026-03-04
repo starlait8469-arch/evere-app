@@ -395,17 +395,22 @@ export default function OrdersPage() {
                                                         const delivered = item.delivered_qty ?? 0;
                                                         const remaining = item.quantity - delivered;
 
-                                                        // 재고 비교를 위한 stockQty 계산
+                                                        // 재고 비교를 위한 stockQty 계산 (대소문자 무시)
+                                                        const itemMainLower = (item.main_category || "").toLowerCase();
+                                                        const itemSubLower = (item.sub_category || "").toLowerCase();
+                                                        const itemColorLower = (item.color || "").toLowerCase();
+                                                        const itemSizeLower = (item.size || "").toLowerCase();
+
                                                         const invItem = inventory.find(i =>
-                                                            i.main_category === item.main_category &&
-                                                            i.sub_category === item.sub_category &&
-                                                            i.color === item.color &&
-                                                            i.size === item.size
+                                                            (i.main_category || "").toLowerCase() === itemMainLower &&
+                                                            (i.sub_category || "").toLowerCase() === itemSubLower &&
+                                                            (i.color || "").toLowerCase() === itemColorLower &&
+                                                            (i.size || "").toLowerCase() === itemSizeLower
                                                         );
                                                         const stockQty = invItem?.quantity ?? -1;
                                                         const isShortage = stockQty >= 0 && remaining > stockQty;
 
-                                                        // 생산 진행 상황 집계
+                                                        // 생산 진행 상황 집계 (대소문자 무시)
                                                         let cuttingQty = 0;
                                                         let sewingMap = new Map<string, number>();
                                                         let finishingQty = 0;
@@ -413,10 +418,10 @@ export default function OrdersPage() {
 
                                                         if (isShortage) {
                                                             const relatedPo = productionOrders.filter(po =>
-                                                                po.main_category === item.main_category &&
-                                                                po.sub_category === item.sub_category &&
-                                                                po.color === item.color &&
-                                                                po.size === item.size
+                                                                (po.main_category || "").toLowerCase() === itemMainLower &&
+                                                                (po.sub_category || "").toLowerCase() === itemSubLower &&
+                                                                (po.color || "").toLowerCase() === itemColorLower &&
+                                                                (po.size || "").toLowerCase() === itemSizeLower
                                                             );
 
                                                             relatedPo.forEach(po => {
@@ -575,11 +580,16 @@ export default function OrdersPage() {
                         let totalInProduction = 0;
 
                         if (isOverStock && row.main_category && row.sub_category) {
+                            const rowMainLower = (row.main_category || "").toLowerCase();
+                            const rowSubLower = (row.sub_category || "").toLowerCase();
+                            const rowColorLower = (row.color || "").toLowerCase();
+                            const rowSizeLower = (row.size || "").toLowerCase();
+
                             const relatedPo = productionOrders.filter(po =>
-                                po.main_category === row.main_category &&
-                                po.sub_category === row.sub_category &&
-                                po.color === row.color &&
-                                po.size === row.size
+                                (po.main_category || "").toLowerCase() === rowMainLower &&
+                                (po.sub_category || "").toLowerCase() === rowSubLower &&
+                                (po.color || "").toLowerCase() === rowColorLower &&
+                                (po.size || "").toLowerCase() === rowSizeLower
                             );
 
                             relatedPo.forEach(po => {
