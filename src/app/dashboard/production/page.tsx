@@ -715,9 +715,11 @@ export default function ProductionPage() {
                         groupMap.forEach((orders, key) => {
                             const [main, sub] = key.split("__");
                             const label = sub ? `${main} › ${sub}` : main;
-                            // color 알파벳순 → size 숫자 오름차순 정렬
+                            // color 알파벳순(대소문자 무시) → size 숫자 오름차순 정렬
                             const sorted = [...orders].sort((a, b) => {
-                                const colorCmp = (a.color || "").localeCompare(b.color || "");
+                                const ca = (a.color || "").trim().toLowerCase();
+                                const cb = (b.color || "").trim().toLowerCase();
+                                const colorCmp = ca.localeCompare(cb);
                                 if (colorCmp !== 0) return colorCmp;
                                 const na = parseFloat(a.size), nb = parseFloat(b.size);
                                 if (!isNaN(na) && !isNaN(nb)) return na - nb;
@@ -725,6 +727,10 @@ export default function ProductionPage() {
                             });
                             groups.push({ label, orders: sorted });
                         });
+
+                        // 그룹명(label) 알파벳순으로 정렬하여 UI 순서 고정
+                        groups.sort((a, b) => a.label.localeCompare(b.label));
+
 
 
                         // 재단중 카드 선택된 개수 (일괄 발송 바)
