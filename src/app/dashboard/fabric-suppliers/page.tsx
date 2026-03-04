@@ -252,8 +252,13 @@ export default function FabricSuppliersPage() {
                                         )}
                                     </div>
                                     <button
+                                        type="button"
                                         className={styles.delBtn}
-                                        onClick={(e) => { e.stopPropagation(); handleDeleteSupplier(sup.id, sup.name); }}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            handleDeleteSupplier(sup.id, sup.name);
+                                        }}
                                     >
                                         🗑
                                     </button>
