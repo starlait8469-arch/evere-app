@@ -62,6 +62,15 @@ export default function DashboardLayout({ children, username, role }: Props) {
         ...(isAdmin
             ? [
                 {
+                    href: "/dashboard/fabric-suppliers",
+                    label: lang === "ko" ? "원단 업체" : "Proveedores de Tela",
+                    icon: (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                            <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m-1 4h1m4-8h1m-1 4h1m-1 4h1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                    ),
+                },
+                {
                     href: "/dashboard/production/factories",
                     label: lang === "ko" ? "봉제공장 관리" : "Talleres",
                     icon: (
