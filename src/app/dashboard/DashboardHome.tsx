@@ -43,6 +43,8 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
     const [showCutModal, setShowCutModal] = useState(false);
     const [cutItems, setCutItems] = useState<{ id: string; name: string; main_category: string; sub_category: string; color: string; size: string; quantity: number; cutting_qty: number }[]>([]);
     const [cutLoading, setCutLoading] = useState(false);
+    const [cutFilterMain, setCutFilterMain] = useState<"all" | "hombre" | "mujer">("all");
+    const [cutFilterSub, setCutFilterSub] = useState<string>("all");
 
     // ── 봉제공장 모달 ──
     const [showFactoryModal, setShowFactoryModal] = useState(false);
@@ -346,8 +348,41 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
                                         : `Stock < ${LOW_STOCK_THRESHOLD} uds · orden ascendente`}
                                 </p>
                             </div>
-                            <button className={styles.modalClose} onClick={() => setShowCutModal(false)}>✕</button>
+                            <button className={styles.modalClose} onClick={() => { setShowCutModal(false); setCutFilterMain("all"); setCutFilterSub("all"); }}>✕</button>
                         </div>
+
+                        {/* 카테고리 필터 */}
+                        {!cutLoading && cutItems.length > 0 && (() => {
+                            const availableSubs = Array.from(
+                                new Set(
+                                    cutItems
+                                        .filter(i => cutFilterMain === "all" || i.main_category === cutFilterMain)
+                                        .map(i => i.sub_category)
+                                        .filter(Boolean)
+                                )
+                            ).sort();
+                            return (
+                                <div style={{ display: "flex", gap: 8, padding: "8px 20px", flexWrap: "wrap", borderBottom: "1px solid var(--border)" }}>
+                                    <select
+                                        value={cutFilterMain}
+                                        onChange={e => { setCutFilterMain(e.target.value as any); setCutFilterSub("all"); }}
+                                        style={{ fontSize: 13, padding: "4px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", cursor: "pointer" }}
+                                    >
+                                        <option value="all">{lang === "ko" ? "전체 카테고리" : "Todas las categorías"}</option>
+                                        <option value="hombre">🧔 Hombre</option>
+                                        <option value="mujer">👩 Mujer</option>
+                                    </select>
+                                    <select
+                                        value={cutFilterSub}
+                                        onChange={e => setCutFilterSub(e.target.value)}
+                                        style={{ fontSize: 13, padding: "4px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", cursor: "pointer", flex: 1, minWidth: 160 }}
+                                    >
+                                        <option value="all">{lang === "ko" ? "전체 서브카테고리" : "Todas las subcategorías"}</option>
+                                        {availableSubs.map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                </div>
+                            );
+                        })()}
 
                         {cutLoading ? (
                             <div className={styles.modalEmpty}>{lang === "ko" ? "불러오는 중..." : "Cargando..."}</div>
@@ -357,34 +392,39 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
                             </div>
                         ) : (
                             <div className={styles.modalList}>
-                                {cutItems.map((item, idx) => {
-                                    const isUrgent = item.quantity === 0;
-                                    return (
-                                        <div key={item.id} className={`${styles.cutItem} ${isUrgent ? styles.cutItemUrgent : ""}`}>
-                                            <div className={styles.cutRank}>#{idx + 1}</div>
-                                            <div className={styles.cutInfo}>
-                                                <div className={styles.cutName}>{item.name}</div>
-                                                <div className={styles.cutMeta}>
-                                                    {item.sub_category && <span className={styles.cutBadge}>{item.sub_category}</span>}
-                                                    {item.color && <span className={styles.cutTag}>🎨 {item.color}</span>}
-                                                    {item.size && <span className={styles.cutTag}>📐 {item.size}</span>}
-                                                </div>
-                                            </div>
-                                            <div className={styles.cutQtyGroup}>
-                                                <div className={`${styles.cutQty} ${isUrgent ? styles.cutQtyZero : ""}`}>
-                                                    <span className={styles.cutQtyLabel}>{lang === "ko" ? "재고" : "Stock"}</span>
-                                                    <span className={styles.cutQtyNum}>{item.quantity}</span>
-                                                </div>
-                                                {item.cutting_qty > 0 && (
-                                                    <div className={styles.cutQtyCutting}>
-                                                        <span className={styles.cutQtyLabel}>{lang === "ko" ? "재단중" : "Cortando"}</span>
-                                                        <span className={styles.cutQtyNum}>{item.cutting_qty}</span>
+                                {cutItems
+                                    .filter(item =>
+                                        (cutFilterMain === "all" || item.main_category === cutFilterMain) &&
+                                        (cutFilterSub === "all" || item.sub_category === cutFilterSub)
+                                    )
+                                    .map((item, idx) => {
+                                        const isUrgent = item.quantity === 0;
+                                        return (
+                                            <div key={item.id} className={`${styles.cutItem} ${isUrgent ? styles.cutItemUrgent : ""}`}>
+                                                <div className={styles.cutRank}>#{idx + 1}</div>
+                                                <div className={styles.cutInfo}>
+                                                    <div className={styles.cutName}>{item.name}</div>
+                                                    <div className={styles.cutMeta}>
+                                                        {item.sub_category && <span className={styles.cutBadge}>{item.sub_category}</span>}
+                                                        {item.color && <span className={styles.cutTag}>🎨 {item.color}</span>}
+                                                        {item.size && <span className={styles.cutTag}>📐 {item.size}</span>}
                                                     </div>
-                                                )}
+                                                </div>
+                                                <div className={styles.cutQtyGroup}>
+                                                    <div className={`${styles.cutQty} ${isUrgent ? styles.cutQtyZero : ""}`}>
+                                                        <span className={styles.cutQtyLabel}>{lang === "ko" ? "재고" : "Stock"}</span>
+                                                        <span className={styles.cutQtyNum}>{item.quantity}</span>
+                                                    </div>
+                                                    {item.cutting_qty > 0 && (
+                                                        <div className={styles.cutQtyCutting}>
+                                                            <span className={styles.cutQtyLabel}>{lang === "ko" ? "재단중" : "Cortando"}</span>
+                                                            <span className={styles.cutQtyNum}>{item.cutting_qty}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    );
-                                })}
+                                        );
+                                    })}
                             </div>
                         )}
 
