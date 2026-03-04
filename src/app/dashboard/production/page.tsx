@@ -160,11 +160,20 @@ export default function ProductionPage() {
         if (isNaN(amt) || amt <= 0) return;
         const item = fabrics.find(f => f.id === fabricAction.id);
         if (!item) return;
+
         const newQty = fabricAction.type === "in"
             ? item.quantity + amt
             : Math.max(0, item.quantity - amt);
+
         setLastFabricOp({ id: item.id, name: item.name, prevQty: item.quantity, newQty });
-        await supabase.from("fabric_inventory").update({ quantity: newQty }).eq("id", fabricAction.id);
+
+        const updatePayload: any = { quantity: newQty };
+        if (fabricAction.type === "in") {
+            updatePayload.last_restocked_at = new Date().toISOString();
+        }
+
+        await supabase.from("fabric_inventory").update(updatePayload).eq("id", fabricAction.id);
+
         setFabricAction(null);
         fetchFabrics();
     };

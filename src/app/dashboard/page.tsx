@@ -87,6 +87,20 @@ export default async function DashboardPage() {
 
     const needsPlanchaCount = needsPlanchaItems.length;
 
+    // 오늘 자정(UTC-3 아르헨티나 기준이거나 로컬 타임 기준, 단순화를 위해 브라우저 접속 일자와 맞추기 위한 로컬 자정 처리, 서버사이드에선 UTC)
+    // 일단 UTC 기준으로 오늘 시작 시간
+    const todayMidnight = new Date();
+    todayMidnight.setHours(0, 0, 0, 0);
+
+    // 오늘 하루 원단 입고 여부 (fabric_inventory의 last_restocked_at 확인)
+    const { data: newFabricData } = await supabase
+        .from("fabric_inventory")
+        .select("id")
+        .gte("last_restocked_at", todayMidnight.toISOString())
+        .limit(1);
+
+    const hasNewFabricToday = (newFabricData && newFabricData.length > 0) ? true : false;
+
     return (
         <DashboardHome
             inProgress={inProgress}
@@ -94,6 +108,7 @@ export default async function DashboardPage() {
             sewingCount={sewingCount}
             needsPlanchaCount={needsPlanchaCount}
             needsPlanchaItems={needsPlanchaItems.slice(0, 50)} // 상위 50개 제한
+            hasNewFabricToday={hasNewFabricToday}
         />
     );
 }

@@ -2,7 +2,7 @@
 
 import { useLanguage } from "@/context/LanguageContext";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./dashboard.module.css";
 
@@ -12,6 +12,7 @@ interface Props {
     sewingCount: number;
     needsPlanchaCount: number;
     needsPlanchaItems: any[];
+    hasNewFabricToday: boolean;
 }
 
 type Stage = "cutting" | "sewing" | "returned" | "finishing" | "done";
@@ -35,9 +36,29 @@ interface FactoryOrder {
 
 const LOW_STOCK_THRESHOLD = 10;
 
-export default function DashboardHome({ inProgress, needsCut, sewingCount, needsPlanchaCount, needsPlanchaItems }: Props) {
+export default function DashboardHome({ inProgress, needsCut, sewingCount, needsPlanchaCount, needsPlanchaItems, hasNewFabricToday }: Props) {
     const { t, lang } = useLanguage();
     const supabase = createClient();
+
+    // ── 알림 카드 표시 (하루 안보기 상태 확인) ──
+    const [showAlert, setShowAlert] = useState(false);
+
+    // 로컬 스토리지에 저장된 오늘 날짜와 현재 날짜를 비교
+    useEffect(() => {
+        if (hasNewFabricToday) {
+            const dismissedDate = localStorage.getItem("fabric_alert_dismissed");
+            const todayStr = new Date().toLocaleDateString();
+            if (dismissedDate !== todayStr) {
+                setShowAlert(true);
+            }
+        }
+    }, [hasNewFabricToday]);
+
+    const dismissAlert = () => {
+        const todayStr = new Date().toLocaleDateString();
+        localStorage.setItem("fabric_alert_dismissed", todayStr);
+        setShowAlert(false);
+    };
 
     // ── 재단하기 모달 ──
     const [showCutModal, setShowCutModal] = useState(false);
@@ -293,6 +314,67 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
                     {lang === "ko" ? "전체 현황을 한눈에 확인하세요" : "Resumen general de tu operación"}
                 </p>
             </div>
+
+            {/* 원단 입고 알림 카드 */}
+            {showAlert && (
+                <div style={{
+                    backgroundColor: "rgba(59, 130, 246, 0.1)",
+                    border: "1px solid #3b82f6",
+                    borderRadius: "12px",
+                    padding: "16px 20px",
+                    marginBottom: "24px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "16px",
+                    flexWrap: "wrap"
+                }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <div style={{ fontSize: "24px" }}>🔔</div>
+                        <div>
+                            <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 600, color: "#1e3a8a", marginBottom: "4px" }}>
+                                {lang === "ko" ? "새로운 원단이 입고되었습니다!" : "¡Nueva tela ingresada hoy!"}
+                            </h3>
+                            <p style={{ margin: 0, fontSize: "14px", color: "#3b82f6" }}>
+                                {lang === "ko"
+                                    ? "생산라인에 추가된 원단이 있습니다. 잊지 말고 원단 업체 내역에도 등록해 주세요."
+                                    : "Has añadido tela en producción. No olvides registrarla en Proveedores de Tela."}
+                            </p>
+                        </div>
+                    </div>
+                    <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                        <Link
+                            href="/dashboard/fabric-suppliers"
+                            style={{
+                                backgroundColor: "#3b82f6",
+                                color: "white",
+                                padding: "8px 16px",
+                                borderRadius: "6px",
+                                fontSize: "14px",
+                                fontWeight: 500,
+                                textDecoration: "none"
+                            }}
+                        >
+                            {lang === "ko" ? "원단 업체 바로가기 →" : "Ir a Proveedores →"}
+                        </Link>
+                        <button
+                            onClick={dismissAlert}
+                            style={{
+                                backgroundColor: "transparent",
+                                border: "1px solid rgba(59, 130, 246, 0.3)",
+                                color: "#3b82f6",
+                                padding: "8px 16px",
+                                borderRadius: "6px",
+                                fontSize: "14px",
+                                cursor: "pointer",
+                                fontWeight: 500
+                            }}
+                        >
+                            {lang === "ko" ? "오늘 하루 닫기 ✕" : "Cerrar por hoy ✕"}
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Quick links */}
             <div className={styles.section}>
