@@ -1080,30 +1080,34 @@ export default function ProductionPage() {
                                     {next === "done" && (lang === "ko" ? " (재고에 자동 추가됩니다)" : " (se agregará al inventario)")}
                                 </p>
                             )}
-                            {/* 실제 입고 수량 조정 */}
-                            <div className={styles.qtyAdjust}>
-                                <label className={styles.qtyLabel}>
-                                    {lang === "ko" ? "📦 실제 입고 수량" : "📦 Cantidad real recibida"}
-                                </label>
-                                <div className={styles.qtyRow}>
-                                    <button className={styles.qtyBtn} onClick={() => setAdvanceQty(q => Math.max(1, q - 1))}>−</button>
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        className={styles.qtyInput}
-                                        value={advanceQty}
-                                        onChange={e => setAdvanceQty(Math.max(1, parseInt(e.target.value) || 1))}
-                                    />
-                                    <button className={styles.qtyBtn} onClick={() => setAdvanceQty(q => q + 1)}>+</button>
+                            {/* 수량 조정: 봉제 -> 가게(returned) 또는 최종 입고(done) 시에만 */}
+                            {(next === "returned" || next === "done") && (
+                                <div className={styles.qtyAdjust}>
+                                    <label className={styles.qtyLabel}>
+                                        {next === "returned"
+                                            ? (lang === "ko" ? "📦 봉제 입고 수량" : "📦 Cantidad recibida")
+                                            : (lang === "ko" ? "📦 실제 입고 수량" : "📦 Cantidad real recibida")}
+                                    </label>
+                                    <div className={styles.qtyRow}>
+                                        <button className={styles.qtyBtn} onClick={() => setAdvanceQty(q => Math.max(1, q - 1))}>−</button>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            className={styles.qtyInput}
+                                            value={advanceQty}
+                                            onChange={e => setAdvanceQty(Math.max(1, parseInt(e.target.value) || 1))}
+                                        />
+                                        <button className={styles.qtyBtn} onClick={() => setAdvanceQty(q => q + 1)}>+</button>
+                                    </div>
+                                    {advanceQty !== advanceModal.order.quantity && (
+                                        <p className={styles.qtyDiff}>
+                                            {lang === "ko"
+                                                ? `원래 수량 ${advanceModal.order.quantity}개 → 실제 ${advanceQty}개`
+                                                : `Original: ${advanceModal.order.quantity} → Real: ${advanceQty}`}
+                                        </p>
+                                    )}
                                 </div>
-                                {advanceQty !== advanceModal.order.quantity && (
-                                    <p className={styles.qtyDiff}>
-                                        {lang === "ko"
-                                            ? `원래 수량 ${advanceModal.order.quantity}개 → 실제 ${advanceQty}개`
-                                            : `Original: ${advanceModal.order.quantity} → Real: ${advanceQty}`}
-                                    </p>
-                                )}
-                            </div>
+                            )}
                             <div className={styles.modalActions}>
                                 <button className={styles.btnCancel} onClick={() => setAdvanceModal(null)}>
                                     {lang === "ko" ? "취소" : "Cancelar"}
