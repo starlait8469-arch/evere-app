@@ -544,7 +544,7 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
             {/* ─── Plancha 추천 (재고부족순) 모달 ─── */}
             {showPlanchaModal && (
                 <div className={styles.modalOverlay} onClick={() => setShowPlanchaModal(false)}>
-                    <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+                    <div className={styles.modal} onClick={e => e.stopPropagation()}>
                         <div className={styles.modalHeader}>
                             <h2>📦 {lang === "ko" ? "Plancha 발송 요망 (재고부족순)" : "Recomendados para Plancha"}</h2>
                             <button className={styles.closeBtn} onClick={() => setShowPlanchaModal(false)}>✕</button>
