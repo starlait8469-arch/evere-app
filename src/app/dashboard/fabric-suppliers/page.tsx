@@ -184,11 +184,22 @@ export default function FabricSuppliersPage() {
         setAddingDelivery(false);
     };
 
+    const [deleteDeliveryModal, setDeleteDeliveryModal] = useState<string | null>(null);
+
     // Delete Delivery
-    const handleDeleteDelivery = async (id: string) => {
-        if (!window.confirm(lang === "ko" ? "삭제하시겠습니까?" : "¿Eliminar?")) return;
-        await supabase.from("fabric_deliveries").delete().eq("id", id);
-        if (selectedSupplierId) fetchDeliveries(selectedSupplierId);
+    const handleDeleteDelivery = (id: string) => {
+        setDeleteDeliveryModal(id);
+    };
+
+    const doDeleteDelivery = async () => {
+        if (!deleteDeliveryModal) return;
+        const { error } = await supabase.from("fabric_deliveries").delete().eq("id", deleteDeliveryModal);
+        if (error) {
+            alert(lang === "ko" ? "삭제 실패: " + error.message : "Error al eliminar: " + error.message);
+        } else {
+            if (selectedSupplierId) fetchDeliveries(selectedSupplierId);
+        }
+        setDeleteDeliveryModal(null);
     };
 
     // Load state
@@ -397,8 +408,13 @@ export default function FabricSuppliersPage() {
                                                     </td>
                                                     <td>
                                                         <button
+                                                            type="button"
                                                             className={styles.delBtn}
-                                                            onClick={() => handleDeleteDelivery(del.id)}
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                handleDeleteDelivery(del.id);
+                                                            }}
                                                             style={{ padding: 4 }}
                                                         >
                                                             ✕
@@ -430,6 +446,28 @@ export default function FabricSuppliersPage() {
                                 {lang === "ko" ? "취소" : "Cancelar"}
                             </button>
                             <button className={styles.btnConfirm} onClick={doDeleteSupplier}>
+                                {lang === "ko" ? "삭제하기" : "Eliminar"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Delivery Confirmation Modal */}
+            {deleteDeliveryModal && (
+                <div className={styles.modalOverlay}>
+                    <div className={styles.modalBox}>
+                        <h3>⚠️ {lang === "ko" ? "내역 삭제 확인" : "Confirmar eliminación"}</h3>
+                        <p className={styles.modalSub}>
+                            {lang === "ko"
+                                ? "정말 이 입고 내역을 삭제하시겠습니까?"
+                                : "¿Estás seguro de que deseas eliminar este registro?"}
+                        </p>
+                        <div className={styles.modalActions}>
+                            <button className={styles.btnCancel} onClick={() => setDeleteDeliveryModal(null)}>
+                                {lang === "ko" ? "취소" : "Cancelar"}
+                            </button>
+                            <button className={styles.btnConfirm} onClick={doDeleteDelivery}>
                                 {lang === "ko" ? "삭제하기" : "Eliminar"}
                             </button>
                         </div>
