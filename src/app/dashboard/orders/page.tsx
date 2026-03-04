@@ -231,7 +231,17 @@ export default function OrdersPage() {
             return updated;
         }));
     };
-    const addRow = () => setRows(prev => [...prev, emptyRow()]);
+    const addRow = () => setRows(prev => {
+        const last = prev[prev.length - 1];
+        // 마지막 행의 품목+색상 값을 복사, size/quantity만 비우기
+        return [...prev, {
+            main_category: last.main_category,
+            sub_category: last.sub_category,
+            color: last.color,
+            size: "",
+            quantity: "",
+        }];
+    });
     const removeRow = (idx: number) => setRows(prev => prev.filter((_, i) => i !== idx));
 
     const validRows = rows.filter(r => r.main_category && r.sub_category && r.quantity && parseInt(r.quantity) > 0);
@@ -628,7 +638,21 @@ export default function OrdersPage() {
                                     </select>
                                     <select className={styles.sel} value={row.size} onChange={e => updateRow(idx, "size", e.target.value)} disabled={!row.color}>
                                         <option value="">—</option>
-                                        {sizes.map(s => <option key={s} value={s}>{s}</option>)}
+                                        {sizes
+                                            .filter(s => {
+                                                // 이미 다른 행에서 같은 품목+색상으로 선택된 사이즈 제외
+                                                const usedInOtherRows = rows
+                                                    .filter((r, i) =>
+                                                        i !== idx &&
+                                                        r.main_category === row.main_category &&
+                                                        r.sub_category === row.sub_category &&
+                                                        r.color === row.color &&
+                                                        r.size === s
+                                                    );
+                                                return usedInOtherRows.length === 0;
+                                            })
+                                            .map(s => <option key={s} value={s}>{s}</option>)
+                                        }
                                     </select>
                                     <div className={styles.qtyCell}>
                                         <input type="number" min="1"
