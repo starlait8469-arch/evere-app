@@ -229,8 +229,18 @@ export default function InventoryPage() {
     const handleAddSubCat = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newSubCat.trim()) return;
+        // 대소문자 무시 중복 체크
+        const trimmed = newSubCat.trim();
+        const isDuplicate = subCategories.some(
+            c => c.main_category === newSubCatMain &&
+                c.name.toLowerCase() === trimmed.toLowerCase()
+        );
+        if (isDuplicate) {
+            alert(lang === "ko" ? "이미 동일한 이름의 카테고리가 있습니다." : "Ya existe una categoría con ese nombre.");
+            return;
+        }
         setCatLoading(true);
-        await supabase.from("categories").insert([{ main_category: newSubCatMain, name: newSubCat.trim() }]);
+        await supabase.from("categories").insert([{ main_category: newSubCatMain, name: trimmed }]);
         setNewSubCat("");
         setCatLoading(false);
         fetchSubCategories();
