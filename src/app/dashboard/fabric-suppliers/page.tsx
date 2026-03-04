@@ -144,9 +144,13 @@ export default function FabricSuppliersPage() {
             : `¿Estás seguro de que deseas eliminar "${name}"? Se eliminarán todos sus datos.`;
         if (!window.confirm(confirmMsg)) return;
 
-        await supabase.from("fabric_suppliers").delete().eq("id", id);
-        if (selectedSupplierId === id) setSelectedSupplierId(null);
-        fetchSuppliers();
+        const { error } = await supabase.from("fabric_suppliers").delete().eq("id", id);
+        if (error) {
+            alert(lang === "ko" ? "삭제 실패: " + error.message : "Error al eliminar: " + error.message);
+        } else {
+            if (selectedSupplierId === id) setSelectedSupplierId(null);
+            fetchSuppliers();
+        }
     };
 
     // Add Delivery
