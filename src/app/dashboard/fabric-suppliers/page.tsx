@@ -249,7 +249,19 @@ export default function FabricSuppliersPage() {
     // Add Payment
     const handleAddPayment = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedSupplierId || !payDate || !payAmount) return;
+
+        if (!selectedSupplierId) {
+            alert("공급업체가 선택되지 않았습니다.");
+            return;
+        }
+        if (!payDate) {
+            alert("결제 일자를 입력해주세요.");
+            return;
+        }
+        if (!payAmount) {
+            alert("결제 금액을 입력해주세요.");
+            return;
+        }
 
         setAddingPayment(true);
         const payload = {
@@ -265,7 +277,8 @@ export default function FabricSuppliersPage() {
             setPayMemo("");
             fetchPayments(selectedSupplierId);
         } else {
-            alert(error.message);
+            console.error("Payment insert error:", error);
+            alert("저장 실패: " + (error.message || JSON.stringify(error)));
         }
         setAddingPayment(false);
     };
