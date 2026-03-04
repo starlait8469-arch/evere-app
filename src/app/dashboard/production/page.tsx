@@ -172,7 +172,12 @@ export default function ProductionPage() {
             updatePayload.last_restocked_at = new Date().toISOString();
         }
 
-        await supabase.from("fabric_inventory").update(updatePayload).eq("id", fabricAction.id);
+        const { error } = await supabase.from("fabric_inventory").update(updatePayload).eq("id", fabricAction.id);
+        if (error) {
+            console.error("Update fabric inventory error:", error);
+            alert("재고 업데이트 실패: " + error.message + " (최근 추가된 테이블 칼럼 설정이 정상적으로 적용되었는지 확인해 주세요)");
+            return;
+        }
 
         setFabricAction(null);
         fetchFabrics();
