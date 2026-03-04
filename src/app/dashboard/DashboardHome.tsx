@@ -132,14 +132,14 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
         );
     };
 
-    // plancha로 보내기 (단건)
+    // 봉제입고로 보내기 (단건) - 봉제공장에서 가게로 들어오는 단계
     const sendToFinishing = async (order: FactoryOrder) => {
         setSendingIds(prev => new Set([...prev, order.id]));
         const qty = order.advanceQty > 0 ? order.advanceQty : order.quantity;
         await supabase
             .from("production_orders")
             .update({
-                stage: "finishing" as Stage,
+                stage: "returned" as Stage,
                 quantity: qty,
                 sewing_returned_qty: qty,
             })
@@ -496,7 +496,7 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
                                                 </div>
                                                 {isSent ? (
                                                     <div className={styles.sentBadge}>
-                                                        ✓ {lang === "ko" ? "plancha 발송됨" : "Enviado"}
+                                                        ✓ {lang === "ko" ? "봉제입고 완료" : "Ingresado"}
                                                     </div>
                                                 ) : (
                                                     <div className={styles.factoryOrderActions}>
@@ -517,7 +517,7 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
                                                             disabled={isSending}
                                                             onClick={() => sendToFinishing(order)}
                                                         >
-                                                            {isSending ? "..." : (lang === "ko" ? "→ plancha" : "→ plancha")}
+                                                            {isSending ? "..." : (lang === "ko" ? "→ 봉제입고" : "→ En tienda")}
                                                         </button>
                                                     </div>
                                                 )}
