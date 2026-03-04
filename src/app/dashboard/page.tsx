@@ -35,14 +35,14 @@ export default async function DashboardPage() {
         return !hasCutting;
     }).length;
 
-    // 봉제 현황: sewing 단계 주문 건수
-    const sewingCount = productionOrders?.filter(o => o.stage === "sewing").length ?? 0;
+    // 봉제 현황: sewing + returned 단계 주문 건수
+    const sewingCount = productionOrders?.filter(o => o.stage === "sewing" || o.stage === "returned").length ?? 0;
 
-    // Plancha 추천: sewing 단계 주문들의 재고 조회 및 정렬
+    // Plancha 추천: returned 단계 주문들 (봉제입고 완료, 가게로 들어온 상태)
     const { data: sewingOrdersData } = await supabase
         .from("production_orders")
         .select("id, main_category, sub_category, color, size, quantity")
-        .eq("stage", "sewing");
+        .eq("stage", "returned");
 
     const sewingOrders = sewingOrdersData || [];
 

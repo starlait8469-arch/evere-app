@@ -14,7 +14,7 @@ interface Props {
     needsPlanchaItems: any[];
 }
 
-type Stage = "cutting" | "sewing" | "finishing" | "done";
+type Stage = "cutting" | "sewing" | "returned" | "finishing" | "done";
 
 interface SewingFactory {
     id: string;

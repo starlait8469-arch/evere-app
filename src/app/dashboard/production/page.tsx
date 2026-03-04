@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "./production.module.css";
 
-type Stage = "cutting" | "sewing" | "finishing" | "done";
+type Stage = "cutting" | "sewing" | "returned" | "finishing" | "done";
 
 type ProductionOrder = {
     id: string;
@@ -36,13 +36,15 @@ type Category = {
 const STAGES: { key: Stage; ko: string; es: string; color: string }[] = [
     { key: "cutting", ko: "재단중", es: "En corte", color: "#f59e0b" },
     { key: "sewing", ko: "봉제 보내기", es: "Enviar a costura", color: "#3b82f6" },
+    { key: "returned", ko: "봉제입고", es: "En tienda", color: "#10b981" },
     { key: "finishing", ko: "plancha 보내기", es: "Enviar a plancha", color: "#8b5cf6" },
-    { key: "done", ko: "입고완료", es: "Ingresado", color: "#10b981" },
+    { key: "done", ko: "입고완료", es: "Ingresado", color: "#6b7280" },
 ];
 
 const NEXT_STAGE: Record<Stage, Stage | null> = {
     cutting: "sewing",
-    sewing: "finishing",
+    sewing: "returned",
+    returned: "finishing",
     finishing: "done",
     done: null,
 };
@@ -93,7 +95,7 @@ export default function ProductionPage() {
     const [advanceQty, setAdvanceQty] = useState<number>(0); // 실제 입고 수량 조정
     // 롤백 확인 모달
     const [rollbackModal, setRollbackModal] = useState<{ order: ProductionOrder } | null>(null);
-    // 봉제중 다중 선택 (plancha 일괄 발송)
+    // 봉제입고(returned) 다중 선택 (plancha 일괄 발송)
     const [selectedSewingIds, setSelectedSewingIds] = useState<Set<string>>(new Set());
     // plancha 일괄 발송 모달
     type PlanchaItem = { order: ProductionOrder; qty: number };
@@ -191,7 +193,8 @@ export default function ProductionPage() {
     const PREV_STAGE: Record<Stage, Stage | null> = {
         cutting: null,
         sewing: "cutting",
-        finishing: "sewing",
+        returned: "sewing",
+        finishing: "returned",
         done: "finishing",
     };
 
@@ -205,8 +208,14 @@ export default function ProductionPage() {
             setFactoryModal({ orderId: order.id });
             return;
         }
-        // 나머지 단계는 확인 모달
-        setAdvanceQty(order.quantity); // 기본값을 현재 수량으로
+        // sewing → returned : 수량 조정 모달 (봉제공장에서 들어올 때)
+        if (nextStage === "returned") {
+            setAdvanceQty(order.quantity);
+            setAdvanceModal({ order });
+            return;
+        }
+        // returned → finishing (Plancha로): 수량 조정 없이 바로 확인
+        setAdvanceQty(order.quantity);
         setAdvanceModal({ order });
     };
 
@@ -250,25 +259,27 @@ export default function ProductionPage() {
                 .from("production_orders")
                 .update({ stage: "done", quantity: realQty, completed_at: new Date().toISOString() })
                 .eq("id", order.id);
-        } else {
-            // 수량 변경 + 단계 업데이트
-            // 봉제 단계에서 다음으로 넘어갈 때 sewing_returned_qty 기록
-            const extraFields = order.stage === "sewing"
-                ? { sewing_returned_qty: realQty }
-                : {};
+        } else if (nextStage === "returned") {
+            // sewing → returned: 봉제공장에서 가게로 입고 (수량 조정 + sewing_returned_qty 기록)
             await supabase.from("production_orders")
-                .update({ stage: nextStage, quantity: realQty, ...extraFields })
+                .update({ stage: "returned", quantity: realQty, sewing_returned_qty: realQty })
                 .eq("id", order.id);
-
-            // 봉제 → plancha 이동 시 출고전표 인쇄 모달 표시
-            if (order.stage === "sewing") {
-                const date = new Date().toLocaleDateString("es-AR");
-                setPlanchaSlip({
-                    factoryName: "Plancha",
-                    date,
-                    orders: [{ ...order, quantity: realQty }],
-                });
-            }
+        } else if (nextStage === "finishing") {
+            // returned → finishing(Plancha): 수량 변경 없이 바로 이동
+            await supabase.from("production_orders")
+                .update({ stage: "finishing" })
+                .eq("id", order.id);
+            // Plancha 출고전표
+            const date = new Date().toLocaleDateString("es-AR");
+            setPlanchaSlip({
+                factoryName: "Plancha",
+                date,
+                orders: [{ ...order, quantity: realQty }],
+            });
+        } else {
+            await supabase.from("production_orders")
+                .update({ stage: nextStage, quantity: realQty })
+                .eq("id", order.id);
         }
         fetchOrders();
     };
@@ -313,7 +324,7 @@ export default function ProductionPage() {
     };
 
 
-    // 봉제중 카드 선택 토글 (plancha 일괄 발송용)
+    // 봉제입고(returned) 카드 선택 토글 (plancha 일괄 발송용)
     const toggleSewing = (id: string) => {
         setSelectedSewingIds(prev => {
             const next = new Set(prev);
@@ -323,9 +334,9 @@ export default function ProductionPage() {
         });
     };
 
-    // 선택된 봉제중 목록을 plancha 일괄 발송 모달로
+    // 선택된 봉제입고 목록을 plancha 일괄 발송 모달로
     const openBulkPlancha = () => {
-        const selected = orders.filter(o => selectedSewingIds.has(o.id) && o.stage === "sewing");
+        const selected = orders.filter(o => selectedSewingIds.has(o.id) && o.stage === "returned");
         if (selected.length === 0) return;
         setPlanchaModal(selected.map(o => ({ order: o, qty: o.quantity })));
     };
@@ -738,9 +749,9 @@ export default function ProductionPage() {
                             filtered.find(o => o.id === id && o.stage === "cutting")
                         );
 
-                        // 봉제중 카드 선택된 개수 (plancha 일괄 발송 바)
+                        // 봉제입고(returned) 카드 선택된 개수 (plancha 일괄 발송 바)
                         const sewingSelected = [...selectedSewingIds].filter(id =>
-                            filtered.find(o => o.id === id && o.stage === "sewing")
+                            filtered.find(o => o.id === id && o.stage === "returned")
                         );
 
                         return (
@@ -755,7 +766,7 @@ export default function ProductionPage() {
                                         <button className={styles.bulkClear} onClick={() => setSelectedIds(new Set())}>✕</button>
                                     </div>
                                 )}
-                                {/* 봉제중 → plancha 일괄 발송 바 */}
+                                {/* 봉제입고 → plancha 일괄 발송 바 */}
                                 {sewingSelected.length > 0 && (
                                     <div className={styles.bulkBar} style={{ background: "#8b5cf6" }}>
                                         <span>{lang === "ko" ? `${sewingSelected.length}개 선택됨` : `${sewingSelected.length} seleccionado(s)`}</span>
@@ -779,7 +790,7 @@ export default function ProductionPage() {
                                                 const next = NEXT_STAGE[order.stage];
                                                 const nextInfo = next ? stageInfo(next) : null;
                                                 const isCutting = order.stage === "cutting";
-                                                const isSewing = order.stage === "sewing";
+                                                const isReturned = order.stage === "returned";
                                                 const isChecked = selectedIds.has(order.id) || selectedSewingIds.has(order.id);
                                                 return (
                                                     <div
@@ -799,14 +810,14 @@ export default function ProductionPage() {
                                                                 </span>
                                                             </label>
                                                         )}
-                                                        {/* 봉제중: plancha 발송 체크박스 */}
-                                                        {isSewing && (
-                                                            <label className={styles.checkRow} style={{ color: "#8b5cf6" }}>
+                                                        {/* 봉제입고(returned): plancha 발송 체크박스 */}
+                                                        {isReturned && (
+                                                            <label className={styles.checkRow} style={{ color: "#10b981" }}>
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={selectedSewingIds.has(order.id)}
                                                                     onChange={() => toggleSewing(order.id)}
-                                                                    style={{ accentColor: "#8b5cf6" }}
+                                                                    style={{ accentColor: "#10b981" }}
                                                                 />
                                                                 <span className={styles.checkLabel}>
                                                                     {lang === "ko" ? "선택" : "Sel."}

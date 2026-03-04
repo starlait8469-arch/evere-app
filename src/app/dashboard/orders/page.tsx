@@ -413,6 +413,7 @@ export default function OrdersPage() {
                                                         // 생산 진행 상황 집계 (대소문자 무시)
                                                         let cuttingQty = 0;
                                                         let sewingMap = new Map<string, number>();
+                                                        let returnedQty = 0;
                                                         let finishingQty = 0;
                                                         let totalInProduction = 0;
 
@@ -427,6 +428,7 @@ export default function OrdersPage() {
                                                             relatedPo.forEach(po => {
                                                                 totalInProduction += po.quantity;
                                                                 if (po.stage === "cutting") cuttingQty += po.quantity;
+                                                                else if (po.stage === "returned") returnedQty += po.quantity;
                                                                 else if (po.stage === "finishing") finishingQty += po.quantity;
                                                                 else if (po.stage === "sewing") {
                                                                     const facName = (po.sewing_factories as any)?.name || (lang === "ko" ? "알 수 없음" : "Desconocido");
@@ -470,8 +472,9 @@ export default function OrdersPage() {
                                                                                 <>
                                                                                     {cuttingQty > 0 && <span className={styles.prdStageTag}>✂️ 재단 {cuttingQty}</span>}
                                                                                     {Array.from(sewingMap.entries()).map(([fac, qty]) => (
-                                                                                        <span key={fac} className={styles.prdStageTag}>🪡 {fac} ({qty})</span>
+                                                                                        <span key={fac} className={styles.prdStageTag}>🧵 {fac} ({qty})</span>
                                                                                     ))}
+                                                                                    {returnedQty > 0 && <span className={styles.prdStageTag} style={{ background: 'rgba(16,185,129,0.12)', color: '#059669' }}>🏠 봉제입고 {returnedQty}</span>}
                                                                                     {finishingQty > 0 && <span className={styles.prdStageTag}>📦 Plancha {finishingQty}</span>}
                                                                                 </>
                                                                             )}
@@ -576,6 +579,7 @@ export default function OrdersPage() {
                         // 생산 진행 상황 집계 (재고 부족분 파악 시)
                         let cuttingQty = 0;
                         let sewingMap = new Map<string, number>();
+                        let returnedQty = 0;
                         let finishingQty = 0;
                         let totalInProduction = 0;
 
@@ -595,6 +599,7 @@ export default function OrdersPage() {
                             relatedPo.forEach(po => {
                                 totalInProduction += po.quantity;
                                 if (po.stage === "cutting") cuttingQty += po.quantity;
+                                else if (po.stage === "returned") returnedQty += po.quantity;
                                 else if (po.stage === "finishing") finishingQty += po.quantity;
                                 else if (po.stage === "sewing") {
                                     const facName = (po.sewing_factories as any)?.name || (lang === "ko" ? "알 수 없음" : "Desconocido");
@@ -655,6 +660,7 @@ export default function OrdersPage() {
                                                     {Array.from(sewingMap.entries()).map(([fac, qty]) => (
                                                         <span key={fac} className={styles.prdStageTag}>🪡 {fac} ({qty})</span>
                                                     ))}
+                                                    {returnedQty > 0 && <span className={styles.prdStageTag} style={{ background: 'rgba(16,185,129,0.12)', color: '#059669' }}>🏠 봉제입고 {returnedQty}</span>}
                                                     {finishingQty > 0 && <span className={styles.prdStageTag}>📦 Plancha {finishingQty}</span>}
                                                 </>
                                             )}
