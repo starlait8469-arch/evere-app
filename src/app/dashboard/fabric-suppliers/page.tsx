@@ -25,6 +25,15 @@ interface Delivery {
     created_at: string;
 }
 
+interface Payment {
+    id: string;
+    supplier_id: string;
+    amount: number;
+    payment_date: string;
+    memo: string | null;
+    created_at: string;
+}
+
 export default function FabricSuppliersPage() {
     const { lang } = useLanguage();
     const router = useRouter();
@@ -42,9 +51,21 @@ export default function FabricSuppliersPage() {
     const [newSupplierContact, setNewSupplierContact] = useState("");
     const [addingSupplier, setAddingSupplier] = useState(false);
 
-    // Deliveries
+    // Deliveries & Payments
     const [deliveries, setDeliveries] = useState<Delivery[]>([]);
     const [deliveriesLoading, setDeliveriesLoading] = useState(false);
+
+    const [payments, setPayments] = useState<Payment[]>([]);
+    const [paymentsLoading, setPaymentsLoading] = useState(false);
+
+    // Active Tab in Right Panel (deliveries | payments)
+    const [activeTab, setActiveTab] = useState<"deliveries" | "payments">("deliveries");
+
+    // New Payment form
+    const [payDate, setPayDate] = useState("");
+    const [payAmount, setPayAmount] = useState("");
+    const [payMemo, setPayMemo] = useState("");
+    const [addingPayment, setAddingPayment] = useState(false);
 
     // New Delivery form
     const [delDate, setDelDate] = useState("");
@@ -109,13 +130,36 @@ export default function FabricSuppliersPage() {
         setDeliveriesLoading(false);
     }, [supabase]);
 
+    // Fetch Payments
+    const fetchPayments = useCallback(async (supId: string) => {
+        setPaymentsLoading(true);
+        const { data, error } = await supabase
+            .from("fabric_payments")
+            .select("*")
+            .eq("supplier_id", supId)
+            .order("payment_date", { ascending: false })
+            .order("created_at", { ascending: false });
+
+        if (!error && data) {
+            setPayments(data);
+        }
+        setPaymentsLoading(false);
+    }, [supabase]);
+
     useEffect(() => {
         if (selectedSupplierId) {
             fetchDeliveries(selectedSupplierId);
+            fetchPayments(selectedSupplierId);
         } else {
             setDeliveries([]);
+            setPayments([]);
         }
-    }, [selectedSupplierId, fetchDeliveries]);
+    }, [selectedSupplierId, fetchDeliveries, fetchPayments]);
+
+    // Calculate Balances
+    const totalCost = deliveries.reduce((sum, d) => sum + (d.cost || 0), 0);
+    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+    const balance = totalCost - totalPaid;
 
     // Add Supplier
     const handleAddSupplier = async (e: React.FormEvent) => {
@@ -200,6 +244,48 @@ export default function FabricSuppliersPage() {
             if (selectedSupplierId) fetchDeliveries(selectedSupplierId);
         }
         setDeleteDeliveryModal(null);
+    };
+
+    // Add Payment
+    const handleAddPayment = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedSupplierId || !payDate || !payAmount) return;
+
+        setAddingPayment(true);
+        const payload = {
+            supplier_id: selectedSupplierId,
+            payment_date: payDate,
+            amount: parseFloat(payAmount),
+            memo: payMemo.trim() || null
+        };
+
+        const { error } = await supabase.from("fabric_payments").insert([payload]);
+        if (!error) {
+            setPayAmount("");
+            setPayMemo("");
+            fetchPayments(selectedSupplierId);
+        } else {
+            alert(error.message);
+        }
+        setAddingPayment(false);
+    };
+
+    const [deletePaymentModal, setDeletePaymentModal] = useState<string | null>(null);
+
+    // Delete Payment
+    const handleDeletePayment = (id: string) => {
+        setDeletePaymentModal(id);
+    };
+
+    const doDeletePayment = async () => {
+        if (!deletePaymentModal) return;
+        const { error } = await supabase.from("fabric_payments").delete().eq("id", deletePaymentModal);
+        if (error) {
+            alert(lang === "ko" ? "삭제 실패: " + error.message : "Error al eliminar: " + error.message);
+        } else {
+            if (selectedSupplierId) fetchPayments(selectedSupplierId);
+        }
+        setDeletePaymentModal(null);
     };
 
     // Load state
@@ -293,139 +379,277 @@ export default function FabricSuppliersPage() {
                             <div className={styles.header}>
                                 <div className={styles.sectionTitle}>
                                     📦 {suppliers.find(s => s.id === selectedSupplierId)?.name}
-                                    {lang === "ko" ? " 입고 내역" : " Entradas"}
-                                </div>
-                                <div className={styles.sectionSub}>
-                                    {lang === "ko" ? "해당 업체로부터 들어온 원단 내역을 기록합니다." : "Registra las telas recibidas de este proveedor."}
                                 </div>
                             </div>
 
-                            {/* 입고 추가 폼 */}
-                            <form className={styles.deliveryForm} onSubmit={handleAddDelivery}>
-                                <div className={styles.formGroup}>
-                                    <label>{lang === "ko" ? "입고 일자 *" : "Fecha *"}</label>
-                                    <input
-                                        type="date"
-                                        className={styles.inputField}
-                                        value={delDate}
-                                        onChange={e => setDelDate(e.target.value)}
-                                        required
-                                    />
+                            {/* Balance Card */}
+                            <div className={styles.balanceCard}>
+                                <div className={styles.balanceItem}>
+                                    <span className={styles.balanceLabel}>{lang === "ko" ? "총 청구액" : "Costo Total"}</span>
+                                    <span className={styles.balanceValue}>${totalCost.toLocaleString()}</span>
                                 </div>
-                                <div className={styles.formGroup}>
-                                    <label>{lang === "ko" ? "원단 종류 (이름) *" : "Tela *"}</label>
-                                    <input
-                                        type="text"
-                                        className={styles.inputField}
-                                        placeholder={lang === "ko" ? "예: 면 30수 화이트" : "Ej: Algodón 30s"}
-                                        value={delFabric}
-                                        onChange={e => setDelFabric(e.target.value)}
-                                        required
-                                    />
+                                <div className={styles.balanceItem}>
+                                    <span className={styles.balanceLabel}>{lang === "ko" ? "총 지불액" : "Total Pagado"}</span>
+                                    <span className={`${styles.balanceValue} ${styles.green}`}>${totalPaid.toLocaleString()}</span>
                                 </div>
+                                <div className={styles.balanceItem}>
+                                    <span className={styles.balanceLabel}>{lang === "ko" ? "미납 잔액" : "Saldo Pendiente"}</span>
+                                    <span className={`${styles.balanceValue} ${balance > 0 ? styles.red : ""}`}>
+                                        ${balance.toLocaleString()}
+                                    </span>
+                                </div>
+                            </div>
 
-                                <div className={styles.formGroup}>
-                                    <label>{lang === "ko" ? "입고 수량 *" : "Cantidad *"}</label>
-                                    <div style={{ display: 'flex', gap: 8 }}>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            className={styles.inputField}
-                                            placeholder="0"
-                                            value={delQty}
-                                            onChange={e => setDelQty(e.target.value)}
-                                            required
-                                            style={{ flex: 1 }}
-                                        />
-                                        <select
-                                            className={styles.inputField}
-                                            value={delUnit}
-                                            onChange={e => setDelUnit(e.target.value)}
-                                            style={{ width: '80px', padding: '10px 8px' }}
-                                        >
-                                            <option value="m">m</option>
-                                            <option value="kg">kg</option>
-                                            <option value="yd">yd</option>
-                                            <option value="롤">롤</option>
-                                        </select>
+                            {/* Tabs */}
+                            <div className={styles.tabs}>
+                                <button
+                                    className={`${styles.tabBtn} ${activeTab === "deliveries" ? styles.tabBtnActive : ""}`}
+                                    onClick={() => setActiveTab("deliveries")}
+                                >
+                                    {lang === "ko" ? "입고 내역" : "Entradas"}
+                                </button>
+                                <button
+                                    className={`${styles.tabBtn} ${activeTab === "payments" ? styles.tabBtnActive : ""}`}
+                                    onClick={() => setActiveTab("payments")}
+                                >
+                                    {lang === "ko" ? "지불 내역" : "Pagos (Abonos)"}
+                                </button>
+                            </div>
+
+                            {activeTab === "deliveries" && (
+                                <>
+                                    <div className={styles.sectionSub} style={{ marginTop: 8 }}>
+                                        {lang === "ko" ? "해당 업체로부터 들어온 원단 내역을 기록합니다." : "Registra las telas recibidas de este proveedor."}
                                     </div>
-                                </div>
 
-                                <div className={styles.formGroup}>
-                                    <label>{lang === "ko" ? "금액 (선택)" : "Costo (opcional)"}</label>
-                                    <div style={{ position: "relative" }}>
-                                        <span style={{ position: "absolute", left: 14, top: 10, color: "#666" }}>$</span>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            className={styles.inputField}
-                                            placeholder="0"
-                                            value={delCost}
-                                            onChange={e => setDelCost(e.target.value)}
-                                            style={{ paddingLeft: 28 }}
-                                        />
-                                    </div>
-                                </div>
+                                    {/* 입고 추가 폼 */}
+                                    <form className={styles.deliveryForm} onSubmit={handleAddDelivery}>
+                                        <div className={styles.formGroup}>
+                                            <label>{lang === "ko" ? "입고 일자 *" : "Fecha *"}</label>
+                                            <input
+                                                type="date"
+                                                className={styles.inputField}
+                                                value={delDate}
+                                                onChange={e => setDelDate(e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                        <div className={styles.formGroup}>
+                                            <label>{lang === "ko" ? "원단 종류 (이름) *" : "Tela *"}</label>
+                                            <input
+                                                type="text"
+                                                className={styles.inputField}
+                                                placeholder={lang === "ko" ? "예: 면 30수 화이트" : "Ej: Algodón 30s"}
+                                                value={delFabric}
+                                                onChange={e => setDelFabric(e.target.value)}
+                                                required
+                                            />
+                                        </div>
 
-                                <div className={styles.actionGroup}>
-                                    <button type="submit" className={styles.submitBtn} disabled={addingDelivery || !delFabric || !delQty} style={{ minWidth: 120 }}>
-                                        {addingDelivery ? "..." : (lang === "ko" ? "내역 저장" : "Guardar")}
-                                    </button>
-                                </div>
-                            </form>
+                                        <div className={styles.formGroup}>
+                                            <label>{lang === "ko" ? "입고 수량 *" : "Cantidad *"}</label>
+                                            <div style={{ display: 'flex', gap: 8 }}>
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    className={styles.inputField}
+                                                    placeholder="0"
+                                                    value={delQty}
+                                                    onChange={e => setDelQty(e.target.value)}
+                                                    required
+                                                    style={{ flex: 1 }}
+                                                />
+                                                <select
+                                                    className={styles.inputField}
+                                                    value={delUnit}
+                                                    onChange={e => setDelUnit(e.target.value)}
+                                                    style={{ width: '80px', padding: '10px 8px' }}
+                                                >
+                                                    <option value="m">m</option>
+                                                    <option value="kg">kg</option>
+                                                    <option value="yd">yd</option>
+                                                    <option value="롤">롤</option>
+                                                </select>
+                                            </div>
+                                        </div>
 
-                            {/* 입고 리스트 */}
-                            <div className={styles.tableWrapper}>
-                                <table className={styles.table}>
-                                    <thead>
-                                        <tr>
-                                            <th>{lang === "ko" ? "일자" : "Fecha"}</th>
-                                            <th>{lang === "ko" ? "원단" : "Tela"}</th>
-                                            <th style={{ textAlign: "right" }}>{lang === "ko" ? "수량" : "Cantidad"}</th>
-                                            <th style={{ textAlign: "right" }}>{lang === "ko" ? "금액" : "Costo"}</th>
-                                            <th style={{ width: 40 }}></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {deliveriesLoading ? (
-                                            <tr><td colSpan={5} className={styles.empty}>Loading...</td></tr>
-                                        ) : deliveries.length === 0 ? (
-                                            <tr>
-                                                <td colSpan={5} className={styles.empty}>
-                                                    {lang === "ko" ? "입고 내역이 없습니다." : "No hay registros."}
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            deliveries.map(del => (
-                                                <tr key={del.id}>
-                                                    <td>{new Date(del.delivery_date).toLocaleDateString()}</td>
-                                                    <td style={{ fontWeight: 600 }}>{del.fabric_name}</td>
-                                                    <td style={{ textAlign: "right" }}>
-                                                        {del.quantity} <span style={{ color: "var(--text-muted)", fontSize: 13 }}>{del.unit}</span>
-                                                    </td>
-                                                    <td style={{ textAlign: "right" }}>
-                                                        {del.cost != null ? `$${del.cost.toLocaleString()}` : "-"}
-                                                    </td>
-                                                    <td>
-                                                        <button
-                                                            type="button"
-                                                            className={styles.delBtn}
-                                                            onClick={(e) => {
-                                                                e.preventDefault();
-                                                                e.stopPropagation();
-                                                                handleDeleteDelivery(del.id);
-                                                            }}
-                                                            style={{ padding: 4 }}
-                                                        >
-                                                            ✕
-                                                        </button>
-                                                    </td>
+                                        <div className={styles.formGroup}>
+                                            <label>{lang === "ko" ? "금액 (선택)" : "Costo (opcional)"}</label>
+                                            <div style={{ position: "relative" }}>
+                                                <span style={{ position: "absolute", left: 14, top: 10, color: "#666" }}>$</span>
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    className={styles.inputField}
+                                                    placeholder="0"
+                                                    value={delCost}
+                                                    onChange={e => setDelCost(e.target.value)}
+                                                    style={{ paddingLeft: 28 }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className={styles.actionGroup}>
+                                            <button type="submit" className={styles.submitBtn} disabled={addingDelivery || !delFabric || !delQty} style={{ minWidth: 120 }}>
+                                                {addingDelivery ? "..." : (lang === "ko" ? "내역 저장" : "Guardar")}
+                                            </button>
+                                        </div>
+                                    </form>
+
+                                    {/* 입고 리스트 */}
+                                    <div className={styles.tableWrapper}>
+                                        <table className={styles.table}>
+                                            <thead>
+                                                <tr>
+                                                    <th>{lang === "ko" ? "일자" : "Fecha"}</th>
+                                                    <th>{lang === "ko" ? "원단" : "Tela"}</th>
+                                                    <th style={{ textAlign: "right" }}>{lang === "ko" ? "수량" : "Cantidad"}</th>
+                                                    <th style={{ textAlign: "right" }}>{lang === "ko" ? "금액" : "Costo"}</th>
+                                                    <th style={{ width: 40 }}></th>
                                                 </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
+                                            </thead>
+                                            <tbody>
+                                                {deliveriesLoading ? (
+                                                    <tr><td colSpan={5} className={styles.empty}>Loading...</td></tr>
+                                                ) : deliveries.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={5} className={styles.empty}>
+                                                            {lang === "ko" ? "입고 내역이 없습니다." : "No hay registros."}
+                                                        </td>
+                                                    </tr>
+                                                ) : (
+                                                    deliveries.map(del => (
+                                                        <tr key={del.id}>
+                                                            <td>{new Date(del.delivery_date).toLocaleDateString()}</td>
+                                                            <td style={{ fontWeight: 600 }}>{del.fabric_name}</td>
+                                                            <td style={{ textAlign: "right" }}>
+                                                                {del.quantity} <span style={{ color: "var(--text-muted)", fontSize: 13 }}>{del.unit}</span>
+                                                            </td>
+                                                            <td style={{ textAlign: "right" }}>
+                                                                {del.cost != null ? `$${del.cost.toLocaleString()}` : "-"}
+                                                            </td>
+                                                            <td>
+                                                                <button
+                                                                    type="button"
+                                                                    className={styles.delBtn}
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        e.stopPropagation();
+                                                                        handleDeleteDelivery(del.id);
+                                                                    }}
+                                                                    style={{ padding: 4 }}
+                                                                >
+                                                                    ✕
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </>
+                            )}
+
+                            {activeTab === "payments" && (
+                                <>
+                                    <div className={styles.sectionSub} style={{ marginTop: 8 }}>
+                                        {lang === "ko" ? "해당 업체에 지불(결제)한 금액 내역을 기록합니다." : "Registra los pagos realizados a este proveedor."}
+                                    </div>
+
+                                    {/* 지불 추가 폼 */}
+                                    <form className={styles.deliveryForm} onSubmit={handleAddPayment}>
+                                        <div className={styles.formGroup}>
+                                            <label>{lang === "ko" ? "지불 일자 *" : "Fecha de Pago *"}</label>
+                                            <input
+                                                type="date"
+                                                className={styles.inputField}
+                                                value={payDate}
+                                                onChange={e => setPayDate(e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                        <div className={styles.formGroup}>
+                                            <label>{lang === "ko" ? "지불 금액 *" : "Monto a Pagar *"}</label>
+                                            <div style={{ position: "relative" }}>
+                                                <span style={{ position: "absolute", left: 14, top: 10, color: "#666" }}>$</span>
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    className={styles.inputField}
+                                                    placeholder="0"
+                                                    value={payAmount}
+                                                    onChange={e => setPayAmount(e.target.value)}
+                                                    style={{ paddingLeft: 28 }}
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className={styles.formGroup} style={{ gridColumn: "1 / -1" }}>
+                                            <label>{lang === "ko" ? "메모 (선택)" : "Nota (opcional)"}</label>
+                                            <input
+                                                type="text"
+                                                className={styles.inputField}
+                                                placeholder={lang === "ko" ? "예: 은행 이체 11/02" : "Ej: Transferencia bancaria"}
+                                                value={payMemo}
+                                                onChange={e => setPayMemo(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className={styles.actionGroup}>
+                                            <button type="submit" className={styles.submitBtn} disabled={addingPayment || !payAmount} style={{ minWidth: 120 }}>
+                                                {addingPayment ? "..." : (lang === "ko" ? "결제 저장" : "Guardar Pago")}
+                                            </button>
+                                        </div>
+                                    </form>
+
+                                    {/* 지불 리스트 */}
+                                    <div className={styles.tableWrapper}>
+                                        <table className={styles.table}>
+                                            <thead>
+                                                <tr>
+                                                    <th>{lang === "ko" ? "일자" : "Fecha"}</th>
+                                                    <th>{lang === "ko" ? "금액" : "Monto"}</th>
+                                                    <th>{lang === "ko" ? "메모" : "Nota"}</th>
+                                                    <th style={{ width: 40 }}></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {paymentsLoading ? (
+                                                    <tr><td colSpan={4} className={styles.empty}>Loading...</td></tr>
+                                                ) : payments.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={4} className={styles.empty}>
+                                                            {lang === "ko" ? "지불 내역이 없습니다." : "No hay pagos."}
+                                                        </td>
+                                                    </tr>
+                                                ) : (
+                                                    payments.map(pay => (
+                                                        <tr key={pay.id}>
+                                                            <td>{new Date(pay.payment_date).toLocaleDateString()}</td>
+                                                            <td style={{ fontWeight: 600, color: "#10b981" }}>${pay.amount.toLocaleString()}</td>
+                                                            <td style={{ color: "#555" }}>{pay.memo || "-"}</td>
+                                                            <td>
+                                                                <button
+                                                                    type="button"
+                                                                    className={styles.delBtn}
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        e.stopPropagation();
+                                                                        handleDeletePayment(pay.id);
+                                                                    }}
+                                                                    style={{ padding: 4 }}
+                                                                >
+                                                                    ✕
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </>
+                            )}
                         </>
                     )}
                 </div>
@@ -468,6 +692,28 @@ export default function FabricSuppliersPage() {
                                 {lang === "ko" ? "취소" : "Cancelar"}
                             </button>
                             <button className={styles.btnConfirm} onClick={doDeleteDelivery}>
+                                {lang === "ko" ? "삭제하기" : "Eliminar"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Payment Confirmation Modal */}
+            {deletePaymentModal && (
+                <div className={styles.modalOverlay}>
+                    <div className={styles.modalBox}>
+                        <h3>⚠️ {lang === "ko" ? "지불 내역 삭제 확인" : "Confirmar eliminación"}</h3>
+                        <p className={styles.modalSub}>
+                            {lang === "ko"
+                                ? "정말 이 지불 내역을 삭제하시겠습니까?"
+                                : "¿Estás seguro de que deseas eliminar este pago?"}
+                        </p>
+                        <div className={styles.modalActions}>
+                            <button className={styles.btnCancel} onClick={() => setDeletePaymentModal(null)}>
+                                {lang === "ko" ? "취소" : "Cancelar"}
+                            </button>
+                            <button className={styles.btnConfirm} onClick={doDeletePayment}>
                                 {lang === "ko" ? "삭제하기" : "Eliminar"}
                             </button>
                         </div>
