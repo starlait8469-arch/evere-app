@@ -80,6 +80,9 @@ export default function OrdersPage() {
     const [inventory, setInventory] = useState<InventoryItem[]>([]);
     const [inventoryLoading, setInventoryLoading] = useState(true);
 
+    // Production Status
+    const [productionOrders, setProductionOrders] = useState<any[]>([]);
+
     // Orders list
     const [orders, setOrders] = useState<StoreOrder[]>([]);
     const [ordersLoading, setOrdersLoading] = useState(true);
@@ -106,6 +109,7 @@ export default function OrdersPage() {
             setIsAdmin(true);
             setToken(session.access_token);
             fetchInventory();
+            fetchProductionStatus();
             fetchOrders(session.access_token);
         };
         init();
@@ -119,6 +123,19 @@ export default function OrdersPage() {
             .order("main_category").order("sub_category").order("color");
         setInventory((data as InventoryItem[]) || []);
         setInventoryLoading(false);
+    };
+
+    const fetchProductionStatus = async () => {
+        // 완료되지 않은 모든 생산 오더 (stage != 'done')
+        // factory 정보를 가져오기 위해 조인
+        const { data } = await supabase
+            .from("production_orders")
+            .select(`
+                id, stage, main_category, sub_category, color, size, quantity,
+                factory:factories(name)
+            `)
+            .neq("stage", "done");
+        if (data) setProductionOrders(data);
     };
 
     const fetchOrders = useCallback(async (tkn?: string) => {
@@ -482,37 +499,95 @@ export default function OrdersPage() {
                         const stockQty = stockQtyFor(row);
                         const orderedQty = parseInt(row.quantity || "0");
                         const isOverStock = stockQty >= 0 && orderedQty > stockQty;
+
+                        // 생산 진행 상황 집계 (재고 부족분 파악 시)
+                        let cuttingQty = 0;
+                        let sewingMap = new Map<string, number>();
+                        let finishingQty = 0;
+                        let totalInProduction = 0;
+
+                        if (isOverStock && row.main_category && row.sub_category) {
+                            const relatedPo = productionOrders.filter(po =>
+                                po.main_category === row.main_category &&
+                                po.sub_category === row.sub_category &&
+                                po.color === row.color &&
+                                po.size === row.size
+                            );
+
+                            relatedPo.forEach(po => {
+                                totalInProduction += po.quantity;
+                                if (po.stage === "cutting") cuttingQty += po.quantity;
+                                else if (po.stage === "finishing") finishingQty += po.quantity;
+                                else if (po.stage === "sewing") {
+                                    const facName = po.factory?.name || (lang === "ko" ? "알 수 없음" : "Desconocido");
+                                    sewingMap.set(facName, (sewingMap.get(facName) || 0) + po.quantity);
+                                }
+                            });
+                        }
+
+                        const shortage = orderedQty - Math.max(0, stockQty);
+                        const needsCutting = isOverStock && (totalInProduction < shortage);
+
                         return (
-                            <div key={idx} className={styles.orderRow}>
-                                <select className={styles.sel} value={row.main_category} onChange={e => updateRow(idx, "main_category", e.target.value)}>
-                                    <option value="">—</option>
-                                    {mainCats.map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                                <select className={styles.sel} value={row.sub_category} onChange={e => updateRow(idx, "sub_category", e.target.value)} disabled={!row.main_category}>
-                                    <option value="">—</option>
-                                    {subs.map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
-                                <select className={styles.sel} value={row.color} onChange={e => updateRow(idx, "color", e.target.value)} disabled={!row.sub_category}>
-                                    <option value="">—</option>
-                                    {colors.map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                                <select className={styles.sel} value={row.size} onChange={e => updateRow(idx, "size", e.target.value)} disabled={!row.color}>
-                                    <option value="">—</option>
-                                    {sizes.map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
-                                <div className={styles.qtyCell}>
-                                    <input type="number" min="1"
-                                        className={`${styles.qtyInput} ${isOverStock ? styles.qtyInputWarn : ""}`}
-                                        placeholder="0"
-                                        value={row.quantity}
-                                        onChange={e => updateRow(idx, "quantity", e.target.value)} />
-                                    {stockQty >= 0 && (
-                                        <span className={`${styles.maxHint} ${isOverStock ? styles.maxHintWarn : ""}`}>
-                                            /{stockQty}
-                                        </span>
-                                    )}
+                            <div key={idx} className={styles.orderRowContainer}>
+                                <div className={styles.orderRow}>
+                                    <select className={styles.sel} value={row.main_category} onChange={e => updateRow(idx, "main_category", e.target.value)}>
+                                        <option value="">—</option>
+                                        {mainCats.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                    <select className={styles.sel} value={row.sub_category} onChange={e => updateRow(idx, "sub_category", e.target.value)} disabled={!row.main_category}>
+                                        <option value="">—</option>
+                                        {subs.map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                    <select className={styles.sel} value={row.color} onChange={e => updateRow(idx, "color", e.target.value)} disabled={!row.sub_category}>
+                                        <option value="">—</option>
+                                        {colors.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                    <select className={styles.sel} value={row.size} onChange={e => updateRow(idx, "size", e.target.value)} disabled={!row.color}>
+                                        <option value="">—</option>
+                                        {sizes.map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                    <div className={styles.qtyCell}>
+                                        <input type="number" min="1"
+                                            className={`${styles.qtyInput} ${isOverStock ? styles.qtyInputWarn : ""}`}
+                                            placeholder="0"
+                                            value={row.quantity}
+                                            onChange={e => updateRow(idx, "quantity", e.target.value)} />
+                                        {stockQty >= 0 && (
+                                            <span className={`${styles.maxHint} ${isOverStock ? styles.maxHintWarn : ""}`}>
+                                                /{stockQty}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <button className={styles.removeBtn} onClick={() => removeRow(idx)} disabled={rows.length === 1}>✕</button>
                                 </div>
-                                <button className={styles.removeBtn} onClick={() => removeRow(idx)} disabled={rows.length === 1}>✕</button>
+
+                                {/* 🔴 재고 부족 알림 영역 */}
+                                {isOverStock && (
+                                    <div className={styles.prdStatusRow}>
+                                        <div className={styles.prdStatusText}>
+                                            <span style={{ fontWeight: 600, marginRight: '8px' }}>
+                                                {lang === "ko" ? "현재 생산라인 진행:" : "En producción:"}
+                                            </span>
+                                            {totalInProduction === 0 ? (
+                                                <span style={{ opacity: 0.6 }}>{lang === "ko" ? "진행 중인 건 없음" : "Ninguno en curso"}</span>
+                                            ) : (
+                                                <>
+                                                    {cuttingQty > 0 && <span className={styles.prdStageTag}>✂️ 재단 {cuttingQty}</span>}
+                                                    {Array.from(sewingMap.entries()).map(([fac, qty]) => (
+                                                        <span key={fac} className={styles.prdStageTag}>🪡 {fac} ({qty})</span>
+                                                    ))}
+                                                    {finishingQty > 0 && <span className={styles.prdStageTag}>📦 Plancha {finishingQty}</span>}
+                                                </>
+                                            )}
+                                        </div>
+                                        {needsCutting && (
+                                            <div className={styles.prdStatusWarn}>
+                                                ⚠️ {lang === "ko" ? "생산 진행량이 부족하여 추가 재단이 필요합니다!" : "¡Falta cantidad en producción, requiere corte extra!"}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         );
                     })}

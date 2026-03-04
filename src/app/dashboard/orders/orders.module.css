@@ -908,8 +908,84 @@
         opacity: 0;
     }
 
+}
+
+/* ─── Production Status Warnings in New Order Form ─── */
+.orderRowContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.prdStatusRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 12px;
+    background: rgba(139, 92, 246, 0.05);
+    border-left: 3px solid #8b5cf6;
+    border-radius: 0 6px 6px 0;
+    margin-left: 20px;
+    /* Indent slightly under the row */
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
     to {
+        opacity: 1;
         transform: translateY(0);
+    }
+}
+
+.prdStatusText {
+    font-size: 12px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.prdStageTag {
+    display: inline-flex;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 11px;
+}
+
+.prdStatusWarn {
+    font-size: 12px;
+    font-weight: 700;
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+    padding: 4px 8px;
+    border-radius: 4px;
+    animation: pulseWarn 2s infinite;
+}
+
+@keyframes pulseWarn {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
+
+    100% {
         opacity: 1;
     }
 }
