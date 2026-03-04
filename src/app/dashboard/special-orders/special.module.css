@@ -1,0 +1,385 @@
+.page {
+    max-width: 860px;
+}
+
+.header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.title {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+}
+
+.subtitle {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.newBtn {
+    padding: 11px 22px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.2s;
+    flex-shrink: 0;
+}
+
+.newBtn:hover {
+    opacity: 0.85;
+}
+
+/* ─── Form ─── */
+.formCard {
+    background: var(--bg-card);
+    border: 2px solid var(--primary);
+    border-radius: 16px;
+    padding: 22px 24px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.formTitle {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.formRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+}
+
+@media (max-width: 640px) {
+    .formRow {
+        grid-template-columns: 1fr;
+    }
+}
+
+.formGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.formLabel {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.formHint {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.formInput {
+    padding: 9px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 9px;
+    font-size: 14px;
+    background: var(--bg-main);
+    color: var(--text-primary);
+    font-family: inherit;
+}
+
+.formInput:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.memoArea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-size: 14px;
+    line-height: 1.7;
+    background: var(--bg-main);
+    color: var(--text-primary);
+    font-family: inherit;
+    resize: vertical;
+    min-height: 180px;
+}
+
+.memoArea:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.formActions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.cancelBtn {
+    padding: 10px 20px;
+    border: 1.5px solid var(--border);
+    background: var(--bg-main);
+    color: var(--text-secondary);
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.saveBtn {
+    padding: 10px 24px;
+    border: none;
+    background: var(--primary);
+    color: white;
+    border-radius: 10px;
+    font-weight: 800;
+    cursor: pointer;
+    font-size: 14px;
+    transition: opacity 0.2s;
+}
+
+.saveBtn:hover:not(:disabled) {
+    opacity: 0.88;
+}
+
+.saveBtn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ─── Filter ─── */
+.filterBar {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.filterBtn {
+    padding: 6px 14px;
+    border: 1.5px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.filterBtn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.filterActive {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.count {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+/* ─── Order List ─── */
+.orderList {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.orderCard {
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+}
+
+.orderCard:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.07);
+}
+
+.orderDone {
+    opacity: 0.65;
+}
+
+.cardTop {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    cursor: pointer;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.cardLeft {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cardCustomer {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.cardDates {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+    flex-wrap: wrap;
+}
+
+.separator {
+    opacity: 0.4;
+}
+
+.cardRight {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.daysLeft {
+    font-size: 12px;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 99px;
+    border: 1px solid;
+    white-space: nowrap;
+}
+
+.chevron {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+/* Memo preview */
+.memoPreview {
+    padding: 0 18px 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    max-height: 54px;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+/* Expanded detail */
+.cardDetail {
+    border-top: 1px solid var(--border);
+    padding: 14px 18px;
+    background: var(--bg-muted);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.memoEditArea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-size: 14px;
+    line-height: 1.7;
+    background: var(--bg-main);
+    color: var(--text-primary);
+    font-family: inherit;
+    resize: vertical;
+}
+
+.memoEditArea:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.cardActions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.doneBtn {
+    padding: 9px 16px;
+    background: #059669;
+    color: white;
+    border: none;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.doneBtn:hover {
+    opacity: 0.85;
+}
+
+.reopenBtn {
+    padding: 9px 16px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.reopenBtn:hover {
+    opacity: 0.85;
+}
+
+.deleteBtn {
+    padding: 9px 16px;
+    border: 1.5px solid rgba(239, 68, 68, 0.3);
+    background: none;
+    color: #ef4444;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.deleteBtn:hover {
+    background: rgba(239, 68, 68, 0.08);
+}
+
+.empty {
+    text-align: center;
+    padding: 60px;
+    color: var(--text-muted);
+    font-size: 14px;
+}
