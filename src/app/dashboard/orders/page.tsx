@@ -127,14 +127,14 @@ export default function OrdersPage() {
 
     const fetchProductionStatus = async () => {
         // 완료되지 않은 모든 생산 오더 (stage != 'done')
-        // factory 정보를 가져오기 위해 조인
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from("production_orders")
             .select(`
                 id, stage, main_category, sub_category, color, size, quantity,
-                factory:factories(name)
+                sewing_factories(name)
             `)
             .neq("stage", "done");
+        if (error) console.error("[fetchProductionStatus] error:", error);
         if (data) setProductionOrders(data);
     };
 
@@ -429,7 +429,7 @@ export default function OrdersPage() {
                                                                 if (po.stage === "cutting") cuttingQty += po.quantity;
                                                                 else if (po.stage === "finishing") finishingQty += po.quantity;
                                                                 else if (po.stage === "sewing") {
-                                                                    const facName = po.factory?.name || (lang === "ko" ? "알 수 없음" : "Desconocido");
+                                                                    const facName = (po.sewing_factories as any)?.name || (lang === "ko" ? "알 수 없음" : "Desconocido");
                                                                     sewingMap.set(facName, (sewingMap.get(facName) || 0) + po.quantity);
                                                                 }
                                                             });
@@ -597,7 +597,7 @@ export default function OrdersPage() {
                                 if (po.stage === "cutting") cuttingQty += po.quantity;
                                 else if (po.stage === "finishing") finishingQty += po.quantity;
                                 else if (po.stage === "sewing") {
-                                    const facName = po.factory?.name || (lang === "ko" ? "알 수 없음" : "Desconocido");
+                                    const facName = (po.sewing_factories as any)?.name || (lang === "ko" ? "알 수 없음" : "Desconocido");
                                     sewingMap.set(facName, (sewingMap.get(facName) || 0) + po.quantity);
                                 }
                             });
