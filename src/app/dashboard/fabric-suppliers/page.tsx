@@ -136,14 +136,16 @@ export default function FabricSuppliersPage() {
         }
         setAddingSupplier(false);
     };
+    const [deleteSupplierModal, setDeleteSupplierModal] = useState<{ id: string, name: string } | null>(null);
 
     // Delete Supplier
     const handleDeleteSupplier = async (id: string, name: string) => {
-        const confirmMsg = lang === "ko"
-            ? `정말 "${name}" 업체를 삭제하시겠습니까? 관련 데이터가 모두 삭제됩니다.`
-            : `¿Estás seguro de que deseas eliminar "${name}"? Se eliminarán todos sus datos.`;
-        if (!window.confirm(confirmMsg)) return;
+        setDeleteSupplierModal({ id, name });
+    };
 
+    const doDeleteSupplier = async () => {
+        if (!deleteSupplierModal) return;
+        const { id } = deleteSupplierModal;
         const { error } = await supabase.from("fabric_suppliers").delete().eq("id", id);
         if (error) {
             alert(lang === "ko" ? "삭제 실패: " + error.message : "Error al eliminar: " + error.message);
@@ -151,6 +153,7 @@ export default function FabricSuppliersPage() {
             if (selectedSupplierId === id) setSelectedSupplierId(null);
             fetchSuppliers();
         }
+        setDeleteSupplierModal(null);
     };
 
     // Add Delivery
@@ -411,6 +414,28 @@ export default function FabricSuppliersPage() {
                     )}
                 </div>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {deleteSupplierModal && (
+                <div className={styles.modalOverlay}>
+                    <div className={styles.modalBox}>
+                        <h3>⚠️ {lang === "ko" ? "업체 삭제 확인" : "Confirmar eliminación"}</h3>
+                        <p className={styles.modalSub}>
+                            {lang === "ko"
+                                ? `정말 "${deleteSupplierModal.name}" 업체를 삭제하시겠습니까? 관련 입고 데이터가 모두 함께 삭제됩니다.`
+                                : `¿Estás seguro de que deseas eliminar "${deleteSupplierModal.name}"? Se eliminarán todos sus registros.`}
+                        </p>
+                        <div className={styles.modalActions}>
+                            <button className={styles.btnCancel} onClick={() => setDeleteSupplierModal(null)}>
+                                {lang === "ko" ? "취소" : "Cancelar"}
+                            </button>
+                            <button className={styles.btnConfirm} onClick={doDeleteSupplier}>
+                                {lang === "ko" ? "삭제하기" : "Eliminar"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
