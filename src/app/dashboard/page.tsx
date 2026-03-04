@@ -14,15 +14,6 @@ export default async function DashboardPage() {
 
     const inProgress = productionOrders?.length ?? 0;
 
-    // 재고 집계
-    const { data: inventoryStats } = await supabase
-        .from("inventory")
-        .select("quantity");
-
-    const totalInventory = inventoryStats?.reduce(
-        (sum, i) => sum + (i.quantity ?? 0), 0
-    ) ?? 0;
-
     // 재단하기: 재고 낮고(< threshold) + cutting 단계 주문 없는 품목
     const { data: lowStockItems } = await supabase
         .from("inventory")
@@ -44,11 +35,14 @@ export default async function DashboardPage() {
         return !hasCutting;
     }).length;
 
+    // 봉제 현황: sewing 단계 주문 건수
+    const sewingCount = productionOrders?.filter(o => o.stage === "sewing").length ?? 0;
+
     return (
         <DashboardHome
             inProgress={inProgress}
             needsCut={needsCut}
-            totalInventory={totalInventory}
+            sewingCount={sewingCount}
         />
     );
 }

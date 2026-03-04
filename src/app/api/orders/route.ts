@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     const orderItems = items.map((item: {
         main_category: string; sub_category: string;
         color: string; size: string; quantity: number;
-    }) => ({ ...item, order_id: order.id }));
+    }) => ({ ...item, order_id: order.id, delivered_qty: 0 }));
 
     const { error: itemErr } = await supabase.from("store_order_items").insert(orderItems);
     if (itemErr) return NextResponse.json({ error: itemErr.message }, { status: 500 });
@@ -66,41 +66,83 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(data || []);
 }
 
-// PATCH: 상태 변경 (납품준비완료 → 재고 차감)
+// PATCH: 상태 변경 + 부분납품 처리
 export async function PATCH(req: NextRequest) {
     const user = await checkAdmin(req);
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
 
-    const { orderId, status } = await req.json();
-    if (!orderId || !status) return NextResponse.json({ error: "Missing fields" }, { status: 400 });
-
+    const body = await req.json();
     const supabase = service();
 
-    // 납품준비완료(ready)로 변경할 때 재고 차감
-    if (status === "ready") {
+    // ── 부분납품 액션 ──
+    // body: { action: "deliver", orderId, deliveries: [{ itemId, qty }] }
+    if (body.action === "deliver") {
+        const { orderId, deliveries } = body as {
+            orderId: string;
+            deliveries: { itemId: string; qty: number }[];
+        };
+
+        if (!orderId || !deliveries?.length)
+            return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+
+        // 현재 아이템 조회
         const { data: items } = await supabase
             .from("store_order_items")
             .select("*")
             .eq("order_id", orderId);
 
-        if (items) {
-            for (const item of items) {
-                const { data: inv } = await supabase
-                    .from("inventory")
-                    .select("id, quantity")
-                    .eq("main_category", item.main_category)
-                    .eq("sub_category", item.sub_category || "")
-                    .eq("color", item.color || "")
-                    .eq("size", item.size || "")
-                    .maybeSingle();
+        if (!items) return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
-                if (inv) {
-                    const newQty = Math.max(0, inv.quantity - item.quantity);
-                    await supabase.from("inventory").update({ quantity: newQty }).eq("id", inv.id);
-                }
+        // 각 delivery 처리: delivered_qty 업데이트 + 재고 차감
+        for (const { itemId, qty } of deliveries) {
+            if (qty <= 0) continue;
+
+            const item = items.find(i => i.id === itemId);
+            if (!item) continue;
+
+            const newDeliveredQty = (item.delivered_qty ?? 0) + qty;
+
+            // delivered_qty 업데이트
+            await supabase
+                .from("store_order_items")
+                .update({ delivered_qty: newDeliveredQty })
+                .eq("id", itemId);
+
+            // 재고 차감
+            const { data: inv } = await supabase
+                .from("inventory")
+                .select("id, quantity")
+                .eq("main_category", item.main_category)
+                .eq("sub_category", item.sub_category || "")
+                .eq("color", item.color || "")
+                .eq("size", item.size || "")
+                .maybeSingle();
+
+            if (inv) {
+                const newQty = Math.max(0, inv.quantity - qty);
+                await supabase.from("inventory").update({ quantity: newQty }).eq("id", inv.id);
             }
         }
+
+        // 최신 아이템 조회 후 완료 여부 판단
+        const { data: updatedItems } = await supabase
+            .from("store_order_items")
+            .select("quantity, delivered_qty")
+            .eq("order_id", orderId);
+
+        const allDelivered = (updatedItems ?? []).every(
+            i => (i.delivered_qty ?? 0) >= i.quantity
+        );
+        const newStatus = allDelivered ? "delivered" : "partial";
+
+        await supabase.from("store_orders").update({ status: newStatus }).eq("id", orderId);
+
+        return NextResponse.json({ ok: true, status: newStatus });
     }
+
+    // ── 일반 상태 변경 ──
+    const { orderId, status } = body;
+    if (!orderId || !status) return NextResponse.json({ error: "Missing fields" }, { status: 400 });
 
     const { error } = await supabase
         .from("store_orders")

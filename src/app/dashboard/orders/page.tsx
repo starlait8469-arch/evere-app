@@ -31,6 +31,7 @@ type StoreOrderItem = {
     color: string;
     size: string;
     quantity: number;
+    delivered_qty: number;
 };
 
 type StoreOrder = {
@@ -43,13 +44,25 @@ type StoreOrder = {
     store_order_items: StoreOrderItem[];
 };
 
+// 납품 모달에서 사용하는 각 품목 행
+type DeliveryRow = {
+    itemId: string;
+    label: string;           // 표시명
+    color: string;
+    size: string;
+    orderedQty: number;
+    deliveredQty: number;    // 기 납품 수량
+    thisQty: number;         // 이번 납품 수량 (입력값)
+    stockQty: number;        // 현재 재고
+};
+
 const emptyRow = (): OrderRow => ({
     main_category: "", sub_category: "", color: "", size: "", quantity: "",
 });
 
 const STATUS_LABELS: Record<string, { ko: string; es: string; color: string }> = {
     pending: { ko: "주문접수", es: "Pendiente", color: "#f59e0b" },
-    ready: { ko: "납품준비완료", es: "Listo", color: "#059669" },
+    partial: { ko: "일부납품", es: "Parcial", color: "#8b5cf6" },
     delivered: { ko: "납품완료", es: "Entregado", color: "#6366f1" },
     cancelled: { ko: "취소", es: "Cancelado", color: "#ef4444" },
 };
@@ -80,6 +93,11 @@ export default function OrdersPage() {
     const [submitting, setSubmitting] = useState(false);
     const [slipData, setSlipData] = useState<{ orderId: string; items: OrderRow[]; date: string; customer: string } | null>(null);
 
+    // 납품 모달
+    const [deliveryOrder, setDeliveryOrder] = useState<StoreOrder | null>(null);
+    const [deliveryRows, setDeliveryRows] = useState<DeliveryRow[]>([]);
+    const [delivering, setDelivering] = useState(false);
+
     useEffect(() => {
         const init = async () => {
             const { data: { session } } = await supabase.auth.getSession();
@@ -97,7 +115,7 @@ export default function OrdersPage() {
     const fetchInventory = async () => {
         setInventoryLoading(true);
         const { data } = await supabase
-            .from("inventory").select("*").gt("quantity", 0)
+            .from("inventory").select("*")
             .order("main_category").order("sub_category").order("color");
         setInventory((data as InventoryItem[]) || []);
         setInventoryLoading(false);
@@ -114,7 +132,7 @@ export default function OrdersPage() {
         setOrdersLoading(false);
     }, [token]);
 
-    // ─── Status update ───
+    // ─── Status update (취소, 납품완료 수동 처리용) ───
     const updateStatus = async (orderId: string, status: string) => {
         await fetch("/api/orders", {
             method: "PATCH",
@@ -122,15 +140,68 @@ export default function OrdersPage() {
             body: JSON.stringify({ orderId, status }),
         });
         fetchOrders();
-        if (status === "ready") fetchInventory();
+    };
+
+    // ─── 납품 모달 오픈 ───
+    const openDeliveryModal = (order: StoreOrder) => {
+        const rows: DeliveryRow[] = order.store_order_items.map(item => {
+            const stockQty = inventory.find(inv =>
+                inv.main_category === item.main_category &&
+                inv.sub_category === (item.sub_category || "") &&
+                inv.color === (item.color || "") &&
+                inv.size === (item.size || "")
+            )?.quantity ?? 0;
+
+            const remaining = item.quantity - (item.delivered_qty ?? 0);
+            // 기본값: 잔여수량과 재고 중 작은 값 (단, 0보다 크면)
+            const defaultQty = Math.min(remaining, stockQty);
+
+            return {
+                itemId: item.id,
+                label: item.sub_category || item.main_category,
+                color: item.color,
+                size: item.size,
+                orderedQty: item.quantity,
+                deliveredQty: item.delivered_qty ?? 0,
+                thisQty: defaultQty > 0 ? defaultQty : 0,
+                stockQty,
+            };
+        });
+        setDeliveryRows(rows);
+        setDeliveryOrder(order);
+    };
+
+    // ─── 납품 확인 ───
+    const submitDelivery = async () => {
+        if (!deliveryOrder) return;
+        const deliveries = deliveryRows
+            .filter(r => r.thisQty > 0)
+            .map(r => ({ itemId: r.itemId, qty: r.thisQty }));
+
+        if (deliveries.length === 0) return;
+
+        setDelivering(true);
+        await fetch("/api/orders", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ action: "deliver", orderId: deliveryOrder.id, deliveries }),
+        });
+        setDelivering(false);
+        setDeliveryOrder(null);
+        fetchOrders();
+        fetchInventory();
     };
 
     // ─── Inventory-derived options ───
     const mainCats = [...new Set(inventory.map(i => i.main_category).filter(Boolean))];
     const subCatsFor = (main: string) => [...new Set(inventory.filter(i => i.main_category === main).map(i => i.sub_category).filter(Boolean))];
     const colorsFor = (main: string, sub: string) => [...new Set(inventory.filter(i => i.main_category === main && i.sub_category === sub).map(i => i.color).filter(Boolean))];
-    const sizesFor = (main: string, sub: string, color: string) => [...new Set(inventory.filter(i => i.main_category === main && i.sub_category === sub && i.color === color).map(i => i.size).filter(Boolean))];
-    const maxQtyFor = (row: OrderRow) => inventory.find(i => i.main_category === row.main_category && i.sub_category === row.sub_category && i.color === row.color && i.size === row.size)?.quantity ?? 0;
+    const sizesFor = (main: string, sub: string, color: string) => [...new Set(inventory.filter(i => i.main_category === main && i.sub_category === sub && i.color === color).map(i => i.size).filter(Boolean))].sort((a, b) => {
+        const na = parseFloat(a), nb = parseFloat(b);
+        if (!isNaN(na) && !isNaN(nb)) return na - nb;
+        return a.localeCompare(b);
+    });
+    const stockQtyFor = (row: OrderRow) => inventory.find(i => i.main_category === row.main_category && i.sub_category === row.sub_category && i.color === row.color && i.size === row.size)?.quantity ?? -1;
 
     // ─── Row updates ───
     const updateRow = (idx: number, field: keyof OrderRow, value: string) => {
@@ -259,7 +330,7 @@ export default function OrdersPage() {
                 <div className={styles.listSection}>
                     {/* 필터 */}
                     <div className={styles.filterBar}>
-                        {["all", "pending", "ready", "delivered", "cancelled"].map(s => (
+                        {["all", "pending", "partial", "delivered", "cancelled"].map(s => (
                             <button key={s}
                                 className={`${styles.filterBtn} ${filterStatus === s ? styles.filterActive : ""}`}
                                 onClick={() => setFilterStatus(s)}>
@@ -303,26 +374,43 @@ export default function OrdersPage() {
                                             <div className={styles.orderDetail}>
                                                 {/* 아이템 목록 */}
                                                 <div className={styles.itemList}>
-                                                    {order.store_order_items?.map(item => (
-                                                        <div key={item.id} className={styles.itemRow}>
-                                                            <span className={styles.itemName}>{item.sub_category || item.main_category}</span>
-                                                            <div className={styles.itemTags}>
-                                                                {item.color && <span className={styles.tag}>{item.color}</span>}
-                                                                {item.size && <span className={styles.tag}>{item.size}</span>}
+                                                    {order.store_order_items?.map(item => {
+                                                        const delivered = item.delivered_qty ?? 0;
+                                                        const remaining = item.quantity - delivered;
+                                                        return (
+                                                            <div key={item.id} className={styles.itemRow}>
+                                                                <span className={styles.itemName}>{item.sub_category || item.main_category}</span>
+                                                                <div className={styles.itemTags}>
+                                                                    {item.color && <span className={styles.tag}>{item.color}</span>}
+                                                                    {item.size && <span className={styles.tag}>{item.size}</span>}
+                                                                </div>
+                                                                <div className={styles.itemQtyGroup}>
+                                                                    <span className={styles.itemQty}>× {item.quantity}</span>
+                                                                    {delivered > 0 && (
+                                                                        <span className={styles.itemDelivered}>
+                                                                            ✓ {delivered}
+                                                                            {remaining > 0 && <span className={styles.itemRemaining}> / 잔{remaining}</span>}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                             </div>
-                                                            <span className={styles.itemQty}>× {item.quantity}</span>
-                                                        </div>
-                                                    ))}
+                                                        );
+                                                    })}
                                                 </div>
                                                 {order.note && <p className={styles.orderNote}>📝 {order.note}</p>}
 
                                                 {/* 액션 버튼 */}
                                                 <div className={styles.orderActions}>
-                                                    {order.status === "pending" && (
+                                                    {(order.status === "pending" || order.status === "partial") && (
                                                         <>
-                                                            <button className={styles.actionBtn} style={{ background: "#059669" }}
-                                                                onClick={() => updateStatus(order.id, "ready")}>
-                                                                ✅ {lang === "ko" ? "납품준비완료" : "Listo — descontar stock"}
+                                                            <button
+                                                                className={styles.actionBtn}
+                                                                style={{ background: "#059669" }}
+                                                                onClick={() => openDeliveryModal(order)}
+                                                            >
+                                                                📦 {lang === "ko"
+                                                                    ? (order.status === "partial" ? "추가 납품" : "납품하기")
+                                                                    : (order.status === "partial" ? "Entregar más" : "Entregar")}
                                                             </button>
                                                             <button className={styles.actionBtnOutline} style={{ borderColor: "#ef4444", color: "#ef4444" }}
                                                                 onClick={() => updateStatus(order.id, "cancelled")}>
@@ -330,11 +418,10 @@ export default function OrdersPage() {
                                                             </button>
                                                         </>
                                                     )}
-                                                    {order.status === "ready" && (
-                                                        <button className={styles.actionBtn} style={{ background: "#6366f1" }}
-                                                            onClick={() => updateStatus(order.id, "delivered")}>
-                                                            🚚 {lang === "ko" ? "납품완료" : "Entregado"}
-                                                        </button>
+                                                    {order.status === "delivered" && (
+                                                        <span className={styles.deliveredBadge}>
+                                                            ✅ {lang === "ko" ? "납품완료" : "Entregado"}
+                                                        </span>
                                                     )}
                                                     <button className={styles.actionBtnOutline}
                                                         onClick={() => {
@@ -392,7 +479,9 @@ export default function OrdersPage() {
                         const subs = subCatsFor(row.main_category);
                         const colors = colorsFor(row.main_category, row.sub_category);
                         const sizes = sizesFor(row.main_category, row.sub_category, row.color);
-                        const maxQty = maxQtyFor(row);
+                        const stockQty = stockQtyFor(row);
+                        const orderedQty = parseInt(row.quantity || "0");
+                        const isOverStock = stockQty >= 0 && orderedQty > stockQty;
                         return (
                             <div key={idx} className={styles.orderRow}>
                                 <select className={styles.sel} value={row.main_category} onChange={e => updateRow(idx, "main_category", e.target.value)}>
@@ -412,11 +501,16 @@ export default function OrdersPage() {
                                     {sizes.map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
                                 <div className={styles.qtyCell}>
-                                    <input type="number" min="1" max={maxQty || undefined}
-                                        className={styles.qtyInput} placeholder="0"
+                                    <input type="number" min="1"
+                                        className={`${styles.qtyInput} ${isOverStock ? styles.qtyInputWarn : ""}`}
+                                        placeholder="0"
                                         value={row.quantity}
                                         onChange={e => updateRow(idx, "quantity", e.target.value)} />
-                                    {maxQty > 0 && <span className={styles.maxHint}>/{maxQty}</span>}
+                                    {stockQty >= 0 && (
+                                        <span className={`${styles.maxHint} ${isOverStock ? styles.maxHintWarn : ""}`}>
+                                            /{stockQty}
+                                        </span>
+                                    )}
                                 </div>
                                 <button className={styles.removeBtn} onClick={() => removeRow(idx)} disabled={rows.length === 1}>✕</button>
                             </div>
@@ -475,6 +569,101 @@ export default function OrdersPage() {
                             </button>
                             <button className={styles.btnPrint} onClick={() => { printOrder(slipData); setSlipData(null); setTab("list"); }}>
                                 🖨️ {lang === "ko" ? "주문전표 인쇄" : "Imprimir"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── 납품 모달 ─── */}
+            {deliveryOrder && (
+                <div className={styles.modalOverlay} onClick={() => !delivering && setDeliveryOrder(null)}>
+                    <div className={styles.deliveryModal} onClick={e => e.stopPropagation()}>
+                        <div className={styles.deliveryModalHeader}>
+                            <div>
+                                <h3 className={styles.deliveryModalTitle}>
+                                    📦 {lang === "ko" ? "납품 처리" : "Entregar"}
+                                </h3>
+                                {deliveryOrder.customer_name && (
+                                    <p className={styles.deliveryModalSub}>👤 {deliveryOrder.customer_name}</p>
+                                )}
+                            </div>
+                            <button className={styles.modalCloseBtn} onClick={() => setDeliveryOrder(null)} disabled={delivering}>✕</button>
+                        </div>
+
+                        {/* 컬럼 헤더 */}
+                        <div className={styles.deliveryColHeader}>
+                            <span>{lang === "ko" ? "품목" : "Artículo"}</span>
+                            <span style={{ textAlign: "center" }}>{lang === "ko" ? "주문" : "Ped."}</span>
+                            <span style={{ textAlign: "center" }}>{lang === "ko" ? "기납품" : "Entregado"}</span>
+                            <span style={{ textAlign: "center" }}>{lang === "ko" ? "재고" : "Stock"}</span>
+                            <span style={{ textAlign: "center" }}>{lang === "ko" ? "이번납품" : "Ahora"}</span>
+                        </div>
+
+                        <div className={styles.deliveryItemList}>
+                            {deliveryRows.map((row, idx) => {
+                                const remaining = row.orderedQty - row.deliveredQty;
+                                const isOverStock = row.thisQty > row.stockQty;
+                                const isFullyDelivered = remaining <= 0;
+                                return (
+                                    <div key={row.itemId} className={`${styles.deliveryItem} ${isFullyDelivered ? styles.deliveryItemDone : ""}`}>
+                                        <div className={styles.deliveryItemName}>
+                                            <span>{row.label}</span>
+                                            <div className={styles.deliveryItemTags}>
+                                                {row.color && <span className={styles.tag}>{row.color}</span>}
+                                                {row.size && <span className={styles.tag}>{row.size}</span>}
+                                            </div>
+                                        </div>
+                                        <span className={styles.deliveryNum}>{row.orderedQty}</span>
+                                        <span className={styles.deliveryNum} style={{ color: row.deliveredQty > 0 ? "#059669" : "var(--text-muted)" }}>
+                                            {row.deliveredQty > 0 ? `✓ ${row.deliveredQty}` : "—"}
+                                        </span>
+                                        <span className={`${styles.deliveryNum} ${row.stockQty === 0 ? styles.stockZero : ""}`}>
+                                            {row.stockQty}
+                                        </span>
+                                        {isFullyDelivered ? (
+                                            <span className={styles.deliveryDoneLabel}>
+                                                {lang === "ko" ? "완료" : "Listo"}
+                                            </span>
+                                        ) : (
+                                            <input
+                                                type="number"
+                                                min={0}
+                                                max={remaining}
+                                                className={`${styles.deliveryQtyInput} ${isOverStock ? styles.qtyInputWarn : ""}`}
+                                                value={row.thisQty}
+                                                onChange={e => {
+                                                    const val = parseInt(e.target.value) || 0;
+                                                    setDeliveryRows(prev => prev.map((r, i) =>
+                                                        i === idx ? { ...r, thisQty: val } : r
+                                                    ));
+                                                }}
+                                            />
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* 재고 초과 경고 */}
+                        {deliveryRows.some(r => r.thisQty > r.stockQty) && (
+                            <div className={styles.deliveryWarn}>
+                                ⚠️ {lang === "ko" ? "재고보다 많이 납품합니다. 재고가 0이 됩니다." : "Cantidad supera el stock disponible."}
+                            </div>
+                        )}
+
+                        <div className={styles.deliveryActions}>
+                            <button className={styles.btnCancel} onClick={() => setDeliveryOrder(null)} disabled={delivering}>
+                                {lang === "ko" ? "취소" : "Cancelar"}
+                            </button>
+                            <button
+                                className={styles.btnDeliver}
+                                disabled={delivering || deliveryRows.every(r => r.thisQty <= 0)}
+                                onClick={submitDelivery}
+                            >
+                                {delivering
+                                    ? (lang === "ko" ? "처리중..." : "Procesando...")
+                                    : `📦 ${lang === "ko" ? "납품 확인" : "Confirmar entrega"}`}
                             </button>
                         </div>
                     </div>

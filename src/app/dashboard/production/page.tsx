@@ -715,8 +715,17 @@ export default function ProductionPage() {
                         groupMap.forEach((orders, key) => {
                             const [main, sub] = key.split("__");
                             const label = sub ? `${main} › ${sub}` : main;
-                            groups.push({ label, orders });
+                            // color 알파벳순 → size 숫자 오름차순 정렬
+                            const sorted = [...orders].sort((a, b) => {
+                                const colorCmp = (a.color || "").localeCompare(b.color || "");
+                                if (colorCmp !== 0) return colorCmp;
+                                const na = parseFloat(a.size), nb = parseFloat(b.size);
+                                if (!isNaN(na) && !isNaN(nb)) return na - nb;
+                                return (a.size || "").localeCompare(b.size || "");
+                            });
+                            groups.push({ label, orders: sorted });
                         });
+
 
                         // 재단중 카드 선택된 개수 (일괄 발송 바)
                         const cuttingSelected = [...selectedIds].filter(id =>
