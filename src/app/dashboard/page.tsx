@@ -53,30 +53,37 @@ export default async function DashboardPage() {
 
     const inventory = inventoryData || [];
 
-    // sewing 품목 각각에 대해 잔여 재고 매핑
+    // sewing 품목 각각에 대해 잔여 재고 매핑 (대소문자 무시)
     const needsPlanchaItems = sewingOrders.map(order => {
+        const orderMainLower = (order.main_category || "").toLowerCase();
+        const orderSubLower = (order.sub_category || "").toLowerCase();
+        const orderColorLower = (order.color || "").toLowerCase();
+        const orderSizeLower = (order.size || "").toLowerCase();
+
         const stockItem = inventory.find(inv =>
-            inv.main_category === order.main_category &&
-            (inv.sub_category || "") === (order.sub_category || "") &&
-            (inv.color || "") === (order.color || "") &&
-            (inv.size || "") === (order.size || "")
+            (inv.main_category || "").toLowerCase() === orderMainLower &&
+            (inv.sub_category || "").toLowerCase() === orderSubLower &&
+            (inv.color || "").toLowerCase() === orderColorLower &&
+            (inv.size || "").toLowerCase() === orderSizeLower
         );
         return {
             ...order,
             stock_quantity: stockItem ? stockItem.quantity : 0
         };
-    }).sort((a, b) => {
-        // 재고 오름차순 정렬 (적은 것 우선)
-        if (a.stock_quantity !== b.stock_quantity) {
-            return a.stock_quantity - b.stock_quantity;
-        }
-        // 재고가 같으면 color -> size 순
-        const colorCmp = (a.color || "").localeCompare(b.color || "");
-        if (colorCmp !== 0) return colorCmp;
-        const na = parseFloat(a.size), nb = parseFloat(b.size);
-        if (!isNaN(na) && !isNaN(nb)) return na - nb;
-        return (a.size || "").localeCompare(b.size || "");
-    });
+    })
+        .filter(item => item.stock_quantity < LOW_STOCK_THRESHOLD)
+        .sort((a, b) => {
+            // 재고 오름차순 정렬 (적은 것 우선)
+            if (a.stock_quantity !== b.stock_quantity) {
+                return a.stock_quantity - b.stock_quantity;
+            }
+            // 재고가 같으면 color -> size 순
+            const colorCmp = (a.color || "").localeCompare(b.color || "");
+            if (colorCmp !== 0) return colorCmp;
+            const na = parseFloat(a.size), nb = parseFloat(b.size);
+            if (!isNaN(na) && !isNaN(nb)) return na - nb;
+            return (a.size || "").localeCompare(b.size || "");
+        });
 
     const needsPlanchaCount = needsPlanchaItems.length;
 
