@@ -495,4 +495,109 @@
     color: #10b981;
     white-space: nowrap;
     flex-shrink: 0;
+
+    .factoryCheckLabel {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+
+    .factoryCheckLabel input {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+
+    .planchaStockInfo {
+        text-align: right;
+        min-width: 60px;
+    }
+
+    .planchaStockLabel {
+        font-size: 11px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        font-weight: 700;
+        margin-bottom: 2px;
+    }
+
+    .planchaStockQty {
+        font-size: 14px;
+        font-weight: 800;
+    }
+
+    .planchaSendInfo {
+        text-align: right;
+        min-width: 60px;
+        padding-left: 12px;
+        border-left: 1px solid var(--border);
+    }
+
+    .planchaSendLabel {
+        font-size: 11px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        font-weight: 700;
+        margin-bottom: 2px;
+    }
+
+    .planchaSendQty {
+        font-size: 14px;
+        font-weight: 800;
+        color: var(--text-primary);
+    }
+
+    /* Bulk actions bar in modlas */
+    .bulkBar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 16px;
+        border-radius: 8px;
+        margin: 0 16px;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .bulkSendBtn {
+        border: none;
+        color: #fff;
+        padding: 6px 14px;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+        transition: opacity 0.2s;
+    }
+
+    .bulkSendBtn:hover:not(:disabled) {
+        opacity: 0.85;
+    }
+
+    .bulkSendBtn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* listItem */
+    .listItem {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+        background: var(--bg-input, rgba(255, 255, 255, 0.04));
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        transition: all 0.2s;
+    }
+
+    .listItem:hover {
+        border-color: var(--border-hover);
+    }
+
+    .listItemSelected {
+        border-color: #8b5cf6;
+        background: rgba(139, 92, 246, 0.05);
+    }
 }

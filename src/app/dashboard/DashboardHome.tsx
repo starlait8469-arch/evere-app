@@ -10,6 +10,8 @@ interface Props {
     inProgress: number;
     needsCut: number;
     sewingCount: number;
+    needsPlanchaCount: number;
+    needsPlanchaItems: any[];
 }
 
 type Stage = "cutting" | "sewing" | "finishing" | "done";
@@ -33,7 +35,7 @@ interface FactoryOrder {
 
 const LOW_STOCK_THRESHOLD = 10;
 
-export default function DashboardHome({ inProgress, needsCut, sewingCount }: Props) {
+export default function DashboardHome({ inProgress, needsCut, sewingCount, needsPlanchaCount, needsPlanchaItems }: Props) {
     const { t, lang } = useLanguage();
     const supabase = createClient();
 
@@ -50,6 +52,11 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount }: Pro
     const [factoryOrders, setFactoryOrders] = useState<FactoryOrder[]>([]);
     const [sendingIds, setSendingIds] = useState<Set<string>>(new Set());
     const [sentIds, setSentIds] = useState<Set<string>>(new Set());
+
+    // ── Plancha 추천 모달 ──
+    const [showPlanchaModal, setShowPlanchaModal] = useState(false);
+    const [planchaSelectedIds, setPlanchaSelectedIds] = useState<Set<string>>(new Set());
+    const [planchaSending, setPlanchaSending] = useState(false);
 
     // 재단하기 데이터 로드
     const fetchCutItems = async () => {
@@ -206,7 +213,54 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount }: Pro
             href: "#",
             onClick: handleFactoryCardClick,
         },
+        {
+            label: lang === "ko" ? "Plancha 필요" : "Req. Plancha",
+            value: needsPlanchaCount,
+            icon: (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+            ),
+            color: "#8b5cf6",
+            bg: "rgba(139,92,246,0.12)",
+            href: "#",
+            onClick: (e: React.MouseEvent) => {
+                e.preventDefault();
+                setShowPlanchaModal(true);
+            },
+        },
     ];
+
+    // Plancha 일괄 발송 핸들러
+    const togglePlanchaSelect = (id: string) => {
+        setPlanchaSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const sendToPlanchaBulk = async () => {
+        if (planchaSelectedIds.size === 0) return;
+        setPlanchaSending(true);
+        const ids = Array.from(planchaSelectedIds);
+
+        for (const id of ids) {
+            const order = needsPlanchaItems.find(o => o.id === id);
+            if (!order) continue;
+            await supabase.from("production_orders")
+                .update({ stage: "finishing", sewing_returned_qty: order.quantity })
+                .eq("id", id);
+        }
+
+        setPlanchaSending(false);
+        setPlanchaSelectedIds(new Set());
+        setShowPlanchaModal(false);
+        // 페이지 리로드하여 대시보드 데이터 통째로 갱신 (서버 컴포넌트라 router.refresh 필요)
+        window.location.reload();
+    };
+
 
     const quickLinks = [
         {
@@ -480,6 +534,83 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount }: Pro
                                 className={styles.modalGoBtn}
                                 style={{ background: "rgba(59,130,246,0.15)", color: "#3b82f6" }}
                                 onClick={() => { setShowFactoryModal(false); setSelectedFactory(null); }}
+                            >
+                                {lang === "ko" ? "생산라인으로 이동 →" : "Ir a producción →"}
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* ─── Plancha 추천 (재고부족순) 모달 ─── */}
+            {showPlanchaModal && (
+                <div className={styles.modalOverlay} onClick={() => setShowPlanchaModal(false)}>
+                    <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+                        <div className={styles.modalHeader}>
+                            <h2>📦 {lang === "ko" ? "Plancha 발송 요망 (재고부족순)" : "Recomendados para Plancha"}</h2>
+                            <button className={styles.closeBtn} onClick={() => setShowPlanchaModal(false)}>✕</button>
+                        </div>
+
+                        {needsPlanchaItems.length === 0 ? (
+                            <div className={styles.modalEmpty}>
+                                {lang === "ko" ? "현재 Plancha로 보낼 품목이 없습니다." : "No hay artículos para enviar."}
+                            </div>
+                        ) : (
+                            <>
+                                <div className={styles.bulkBar} style={{ background: "rgba(139,92,246,0.15)", color: "#8b5cf6", marginBottom: 12 }}>
+                                    <span>{lang === "ko" ? `${planchaSelectedIds.size}개 선택됨` : `${planchaSelectedIds.size} seleccionado(s)`}</span>
+                                    <button
+                                        className={styles.bulkSendBtn}
+                                        style={{ background: "#8b5cf6" }}
+                                        disabled={planchaSending || planchaSelectedIds.size === 0}
+                                        onClick={sendToPlanchaBulk}
+                                    >
+                                        🔧 {planchaSending ? "..." : (lang === "ko" ? "일괄 발송" : "Enviar selección")}
+                                    </button>
+                                </div>
+
+                                <div className={styles.modalList}>
+                                    {needsPlanchaItems.map(item => {
+                                        const isChecked = planchaSelectedIds.has(item.id);
+                                        return (
+                                            <div key={item.id} className={`${styles.listItem} ${isChecked ? styles.listItemSelected : ""}`}>
+                                                <label className={styles.factoryCheckLabel} style={{ marginRight: 12 }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isChecked}
+                                                        onChange={() => togglePlanchaSelect(item.id)}
+                                                    />
+                                                </label>
+                                                <div className={styles.itemInfo}>
+                                                    <div className={styles.itemName}>
+                                                        {item.main_category} &gt; {item.sub_category || "—"}
+                                                    </div>
+                                                    <div className={styles.itemMeta}>
+                                                        <span>{item.color || "—"}</span>
+                                                        <span className={styles.dot}>•</span>
+                                                        <span>Talla {item.size || "—"}</span>
+                                                    </div>
+                                                </div>
+                                                <div className={styles.planchaStockInfo}>
+                                                    <div className={styles.planchaStockLabel}>{lang === "ko" ? "잔여재고" : "Stock"}</div>
+                                                    <div className={styles.planchaStockQty} style={{ color: item.stock_quantity === 0 ? "#ef4444" : "var(--text-primary)" }}>
+                                                        {item.stock_quantity}
+                                                    </div>
+                                                </div>
+                                                <div className={styles.planchaSendInfo}>
+                                                    <div className={styles.planchaSendLabel}>{lang === "ko" ? "생산수량" : "Cant."}</div>
+                                                    <div className={styles.planchaSendQty}>{item.quantity}</div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </>
+                        )}
+                        <div className={styles.modalFooter}>
+                            <Link
+                                href="/dashboard/production"
+                                className={styles.modalGoBtn}
+                                style={{ background: "rgba(139,92,246,0.15)", color: "#8b5cf6" }}
                             >
                                 {lang === "ko" ? "생산라인으로 이동 →" : "Ir a producción →"}
                             </Link>
