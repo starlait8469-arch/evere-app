@@ -200,17 +200,45 @@
     gap: 6px;
 }
 
+.itemRowContainer {
+    display: flex;
+    flex-direction: column;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.itemRowContainer:last-child {
+    border-bottom: none;
+}
+
 .itemRow {
     display: flex;
     align-items: center;
     gap: 8px;
     font-size: 13px;
-    padding: 4px 0;
-    border-bottom: 1px solid var(--border);
 }
 
-.itemRow:last-child {
-    border-bottom: none;
+.listPrdStatusRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 6px;
+    margin-left: 12px;
+    padding: 6px 10px;
+    background: rgba(139, 92, 246, 0.05);
+    border-left: 2px solid #8b5cf6;
+    border-radius: 0 4px 4px 0;
+    font-size: 11px;
+}
+
+.listPrdStatusWarn {
+    font-weight: 700;
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
 }
 
 .itemName {

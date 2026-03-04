@@ -394,22 +394,90 @@ export default function OrdersPage() {
                                                     {order.store_order_items?.map(item => {
                                                         const delivered = item.delivered_qty ?? 0;
                                                         const remaining = item.quantity - delivered;
+
+                                                        // 재고 비교를 위한 stockQty 계산
+                                                        const invItem = inventory.find(i =>
+                                                            i.main_category === item.main_category &&
+                                                            i.sub_category === item.sub_category &&
+                                                            i.color === item.color &&
+                                                            i.size === item.size
+                                                        );
+                                                        const stockQty = invItem?.quantity ?? -1;
+                                                        const isShortage = stockQty >= 0 && remaining > stockQty;
+
+                                                        // 생산 진행 상황 집계
+                                                        let cuttingQty = 0;
+                                                        let sewingMap = new Map<string, number>();
+                                                        let finishingQty = 0;
+                                                        let totalInProduction = 0;
+
+                                                        if (isShortage) {
+                                                            const relatedPo = productionOrders.filter(po =>
+                                                                po.main_category === item.main_category &&
+                                                                po.sub_category === item.sub_category &&
+                                                                po.color === item.color &&
+                                                                po.size === item.size
+                                                            );
+
+                                                            relatedPo.forEach(po => {
+                                                                totalInProduction += po.quantity;
+                                                                if (po.stage === "cutting") cuttingQty += po.quantity;
+                                                                else if (po.stage === "finishing") finishingQty += po.quantity;
+                                                                else if (po.stage === "sewing") {
+                                                                    const facName = po.factory?.name || (lang === "ko" ? "알 수 없음" : "Desconocido");
+                                                                    sewingMap.set(facName, (sewingMap.get(facName) || 0) + po.quantity);
+                                                                }
+                                                            });
+                                                        }
+
+                                                        const shortageAmount = remaining - Math.max(0, stockQty);
+                                                        const needsCutting = isShortage && (totalInProduction < shortageAmount);
+
                                                         return (
-                                                            <div key={item.id} className={styles.itemRow}>
-                                                                <span className={styles.itemName}>{item.sub_category || item.main_category}</span>
-                                                                <div className={styles.itemTags}>
-                                                                    {item.color && <span className={styles.tag}>{item.color}</span>}
-                                                                    {item.size && <span className={styles.tag}>{item.size}</span>}
+                                                            <div key={item.id} className={styles.itemRowContainer}>
+                                                                <div className={styles.itemRow}>
+                                                                    <span className={styles.itemName}>{item.sub_category || item.main_category}</span>
+                                                                    <div className={styles.itemTags}>
+                                                                        {item.color && <span className={styles.tag}>{item.color}</span>}
+                                                                        {item.size && <span className={styles.tag}>{item.size}</span>}
+                                                                    </div>
+                                                                    <div className={styles.itemQtyGroup}>
+                                                                        <span className={styles.itemQty}>× {item.quantity}</span>
+                                                                        {delivered > 0 && (
+                                                                            <span className={styles.itemDelivered}>
+                                                                                ✓ {delivered}
+                                                                                {remaining > 0 && <span className={styles.itemRemaining}> / 잔{remaining}</span>}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
-                                                                <div className={styles.itemQtyGroup}>
-                                                                    <span className={styles.itemQty}>× {item.quantity}</span>
-                                                                    {delivered > 0 && (
-                                                                        <span className={styles.itemDelivered}>
-                                                                            ✓ {delivered}
-                                                                            {remaining > 0 && <span className={styles.itemRemaining}> / 잔{remaining}</span>}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
+
+                                                                {/* 🔴 재고 부족 및 생산 현황 알림 영역 */}
+                                                                {isShortage && (
+                                                                    <div className={styles.listPrdStatusRow}>
+                                                                        <div className={styles.prdStatusText}>
+                                                                            <span style={{ fontWeight: 600, marginRight: '4px' }}>
+                                                                                {lang === "ko" ? "생산라인:" : "En prod.:"}
+                                                                            </span>
+                                                                            {totalInProduction === 0 ? (
+                                                                                <span style={{ opacity: 0.6 }}>{lang === "ko" ? "진행 없음" : "Ninguno"}</span>
+                                                                            ) : (
+                                                                                <>
+                                                                                    {cuttingQty > 0 && <span className={styles.prdStageTag}>✂️ 재단 {cuttingQty}</span>}
+                                                                                    {Array.from(sewingMap.entries()).map(([fac, qty]) => (
+                                                                                        <span key={fac} className={styles.prdStageTag}>🪡 {fac} ({qty})</span>
+                                                                                    ))}
+                                                                                    {finishingQty > 0 && <span className={styles.prdStageTag}>📦 Plancha {finishingQty}</span>}
+                                                                                </>
+                                                                            )}
+                                                                        </div>
+                                                                        {needsCutting && (
+                                                                            <div className={styles.listPrdStatusWarn}>
+                                                                                ⚠️ {lang === "ko" ? "추가 재단 요망" : "Req. corte"}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         );
                                                     })}
