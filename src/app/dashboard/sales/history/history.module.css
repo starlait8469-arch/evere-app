@@ -139,4 +139,85 @@
     .table td {
         padding: 12px;
     }
+
+    .summaryContainer {
+        grid-template-columns: 1fr;
+    }
+}
+
+.datePickerContainer {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.dateInput {
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 15px;
+    outline: none;
+    color: var(--text-primary);
+    background: var(--bg-card);
+}
+
+.summaryContainer {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+.summaryCard {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cardTotal {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border: none;
+}
+
+.summaryTitle {
+    font-size: 14px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.cardTotal .summaryTitle {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.summaryValue {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.cardTotal .summaryValue {
+    color: white;
+}
+
+.summarySub {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.cardTotal .summarySub {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.sectionTitle {
+    font-size: 18px;
+    font-weight: 700;
+    margin-top: 32px;
+    margin-bottom: 16px;
+    color: var(--text-primary);
 }

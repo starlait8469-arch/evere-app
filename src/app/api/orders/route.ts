@@ -41,10 +41,22 @@ export async function POST(req: NextRequest) {
 
     if (orderErr) return NextResponse.json({ error: orderErr.message }, { status: 500 });
 
+    // 모든 카테고리 단가 조회
+    const { data: catData } = await supabase.from("categories").select("name, price");
+    const prices: Record<string, number> = {};
+    if (catData) {
+        catData.forEach(c => prices[c.name] = c.price || 0);
+    }
+
     const orderItems = items.map((item: {
         main_category: string; sub_category: string;
         color: string; size: string; quantity: number;
-    }) => ({ ...item, order_id: order.id, delivered_qty: 0 }));
+    }) => ({
+        ...item,
+        order_id: order.id,
+        delivered_qty: 0,
+        unit_price: prices[item.sub_category] || 0
+    }));
 
     const { error: itemErr } = await supabase.from("store_order_items").insert(orderItems);
     if (itemErr) return NextResponse.json({ error: itemErr.message }, { status: 500 });
@@ -107,6 +119,15 @@ export async function PATCH(req: NextRequest) {
                 .from("store_order_items")
                 .update({ delivered_qty: newDeliveredQty })
                 .eq("id", itemId);
+
+            // 납품 히스토리 추가
+            await supabase.from("store_deliveries_history").insert([{
+                store_order_id: orderId,
+                store_order_item_id: itemId,
+                quantity: qty,
+                unit_price: item.unit_price || 0,
+                delivered_by: user.id
+            }]);
 
             // 재고 차감
             const { data: inv } = await supabase

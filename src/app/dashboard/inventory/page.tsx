@@ -7,7 +7,7 @@ import styles from "./inventory.module.css";
 
 type MainCat = "hombre" | "mujer";
 
-interface SubCategory { id: string; name: string; main_category: string; }
+interface SubCategory { id: string; name: string; main_category: string; price: number; }
 
 interface InventoryItem {
     id: string;
@@ -51,9 +51,12 @@ export default function InventoryPage() {
     // Category management
     const [showCatManager, setShowCatManager] = useState(false);
     const [newSubCat, setNewSubCat] = useState("");
+    const [newSubCatPrice, setNewSubCatPrice] = useState("0");
     const [newSubCatMain, setNewSubCatMain] = useState<MainCat>("hombre");
     const [catLoading, setCatLoading] = useState(false);
     const [deleteCatConfirm, setDeleteCatConfirm] = useState<string | null>(null);
+    const [editCatId, setEditCatId] = useState<string | null>(null);
+    const [editCatPrice, setEditCatPrice] = useState("0");
 
     const fetchSubCategories = useCallback(async () => {
         const { data } = await supabase.from("categories").select("*").order("name");
@@ -231,6 +234,7 @@ export default function InventoryPage() {
         if (!newSubCat.trim()) return;
         // 대소문자 무시 중복 체크
         const trimmed = newSubCat.trim();
+        const priceNum = parseInt(newSubCatPrice, 10) || 0;
         const isDuplicate = subCategories.some(
             c => c.main_category === newSubCatMain &&
                 c.name.toLowerCase() === trimmed.toLowerCase()
@@ -240,8 +244,22 @@ export default function InventoryPage() {
             return;
         }
         setCatLoading(true);
-        await supabase.from("categories").insert([{ main_category: newSubCatMain, name: trimmed }]);
+        await supabase.from("categories").insert([{ main_category: newSubCatMain, name: trimmed, price: priceNum }]);
         setNewSubCat("");
+        setNewSubCatPrice("0");
+        setCatLoading(false);
+        fetchSubCategories();
+    };
+
+    const handleUpdateSubCatPrice = async (id: string) => {
+        const priceNum = parseInt(editCatPrice, 10) || 0;
+        setCatLoading(true);
+        const { error } = await supabase.from("categories").update({ price: priceNum }).eq("id", id);
+        if (error) {
+            console.error("Update error:", error);
+            alert("저장 실패: " + error.message);
+        }
+        setEditCatId(null);
         setCatLoading(false);
         fetchSubCategories();
     };
@@ -290,6 +308,15 @@ export default function InventoryPage() {
                             placeholder={t("새 서브 카테고리 이름", "Nombre de subcategoría")}
                             value={newSubCat}
                             onChange={(e) => setNewSubCat(e.target.value)}
+                            style={{ flex: 1 }}
+                        />
+                        <input
+                            className={styles.catInput}
+                            type="number"
+                            placeholder={t("단가 ($)", "Precio ($)")}
+                            value={newSubCatPrice}
+                            onChange={(e) => setNewSubCatPrice(e.target.value)}
+                            style={{ width: "100px" }}
                         />
                         <button className={styles.catAddBtn} type="submit" disabled={catLoading}>
                             {catLoading ? "..." : t("추가", "Añadir")}
@@ -307,7 +334,29 @@ export default function InventoryPage() {
                                 ) : (
                                     subCategories.filter((c) => c.main_category === mc).map((cat) => (
                                         <div key={cat.id} className={styles.catItem}>
-                                            <span>{cat.name}</span>
+                                            <span style={{ flex: 1 }}>{cat.name}</span>
+                                            {editCatId === cat.id ? (
+                                                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                                    <input
+                                                        type="number"
+                                                        className={styles.catInput}
+                                                        style={{ width: "80px", padding: "4px" }}
+                                                        value={editCatPrice}
+                                                        onChange={(e) => setEditCatPrice(e.target.value)}
+                                                    />
+                                                    <button className={styles.confirmYes} disabled={catLoading} onClick={() => handleUpdateSubCatPrice(cat.id)}>
+                                                        {t("저장", "Guardar")}
+                                                    </button>
+                                                    <button className={styles.confirmNo} onClick={() => setEditCatId(null)}>
+                                                        {t("취소", "Cancelar")}
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <span style={{ fontSize: "14px", color: "#666", marginRight: "10px", cursor: "pointer" }} onClick={() => { setEditCatId(cat.id); setEditCatPrice(String(cat.price || 0)); }}>
+                                                    ${(cat.price || 0).toLocaleString()} ✏️
+                                                </span>
+                                            )}
+
                                             {deleteCatConfirm === cat.id ? (
                                                 <div className={styles.confirmRow}>
                                                     <button className={styles.confirmYes} onClick={() => handleDeleteSubCat(cat.id)}>{t("삭제", "Sí")}</button>

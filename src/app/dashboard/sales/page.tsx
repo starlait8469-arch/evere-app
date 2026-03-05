@@ -22,6 +22,7 @@ type InventoryItem = {
 export default function SalesPage() {
     const { t, lang } = useLanguage();
     const [items, setItems] = useState<InventoryItem[]>([]);
+    const [categoryPrices, setCategoryPrices] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(true);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
 
@@ -43,11 +44,20 @@ export default function SalesPage() {
 
     const fetchAvailableItems = async () => {
         setLoading(true);
-        // 수량이 1개 이상인(재고가 있는) 품목만 가져옵니다.
-        const { data, error } = await supabase
-            .from("inventory")
-            .select("*")
-            .gt("quantity", 0);
+        // 수량이 1개 이상인(재고가 있는) 품목과 카테고리 정보 가져오기
+        const [invRes, catRes] = await Promise.all([
+            supabase.from("inventory").select("*").gt("quantity", 0),
+            supabase.from("categories").select("name, price")
+        ]);
+
+        if (catRes.data) {
+            const prices: Record<string, number> = {};
+            catRes.data.forEach(c => prices[c.name] = c.price || 0);
+            setCategoryPrices(prices);
+        }
+
+        const data = invRes.data;
+        const error = invRes.error;
 
         if (error) {
             console.error("Error fetching items:", error);
@@ -151,11 +161,13 @@ export default function SalesPage() {
         }
 
         // 2. 판매 장부에 기록
+        const currentPrice = categoryPrices[item.sub_category] || 0;
         const { error: historyError } = await supabase
             .from("sales_history")
             .insert([{
                 inventory_id: item.id,
                 quantity: confirmSale.qty,
+                unit_price: currentPrice,
                 sold_by: currentUser.id
             }]);
 
