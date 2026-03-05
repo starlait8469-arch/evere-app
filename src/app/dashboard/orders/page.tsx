@@ -406,16 +406,16 @@ export default function OrdersPage() {
                                                         const remaining = item.quantity - delivered;
 
                                                         // 재고 비교를 위한 stockQty 계산 (대소문자 무시)
-                                                        const itemMainLower = (item.main_category || "").toLowerCase();
-                                                        const itemSubLower = (item.sub_category || "").toLowerCase();
-                                                        const itemColorLower = (item.color || "").toLowerCase();
-                                                        const itemSizeLower = (item.size || "").toLowerCase();
+                                                        const itemMainLower = (item.main_category || "").trim().toLowerCase();
+                                                        const itemSubLower = (item.sub_category || "").trim().toLowerCase();
+                                                        const itemColorLower = (item.color || "").trim().toLowerCase();
+                                                        const itemSizeLower = (item.size || "").trim().toLowerCase();
 
                                                         const invItem = inventory.find(i =>
-                                                            (i.main_category || "").toLowerCase() === itemMainLower &&
-                                                            (i.sub_category || "").toLowerCase() === itemSubLower &&
-                                                            (i.color || "").toLowerCase() === itemColorLower &&
-                                                            (i.size || "").toLowerCase() === itemSizeLower
+                                                            (i.main_category || "").trim().toLowerCase() === itemMainLower &&
+                                                            (i.sub_category || "").trim().toLowerCase() === itemSubLower &&
+                                                            (i.color || "").trim().toLowerCase() === itemColorLower &&
+                                                            (i.size || "").trim().toLowerCase() === itemSizeLower
                                                         );
                                                         const stockQty = invItem?.quantity ?? -1;
                                                         const isShortage = stockQty >= 0 && remaining > stockQty;
@@ -429,10 +429,10 @@ export default function OrdersPage() {
 
                                                         if (isShortage) {
                                                             const relatedPo = productionOrders.filter(po =>
-                                                                (po.main_category || "").toLowerCase() === itemMainLower &&
-                                                                (po.sub_category || "").toLowerCase() === itemSubLower &&
-                                                                (po.color || "").toLowerCase() === itemColorLower &&
-                                                                (po.size || "").toLowerCase() === itemSizeLower
+                                                                (po.main_category || "").trim().toLowerCase() === itemMainLower &&
+                                                                (po.sub_category || "").trim().toLowerCase() === itemSubLower &&
+                                                                (po.color || "").trim().toLowerCase() === itemColorLower &&
+                                                                (po.size || "").trim().toLowerCase() === itemSizeLower
                                                             );
 
                                                             relatedPo.forEach(po => {
@@ -594,16 +594,16 @@ export default function OrdersPage() {
                         let totalInProduction = 0;
 
                         if (isOverStock && row.main_category && row.sub_category) {
-                            const rowMainLower = (row.main_category || "").toLowerCase();
-                            const rowSubLower = (row.sub_category || "").toLowerCase();
-                            const rowColorLower = (row.color || "").toLowerCase();
-                            const rowSizeLower = (row.size || "").toLowerCase();
+                            const rowMainLower = (row.main_category || "").trim().toLowerCase();
+                            const rowSubLower = (row.sub_category || "").trim().toLowerCase();
+                            const rowColorLower = (row.color || "").trim().toLowerCase();
+                            const rowSizeLower = (row.size || "").trim().toLowerCase();
 
                             const relatedPo = productionOrders.filter(po =>
-                                (po.main_category || "").toLowerCase() === rowMainLower &&
-                                (po.sub_category || "").toLowerCase() === rowSubLower &&
-                                (po.color || "").toLowerCase() === rowColorLower &&
-                                (po.size || "").toLowerCase() === rowSizeLower
+                                (po.main_category || "").trim().toLowerCase() === rowMainLower &&
+                                (po.sub_category || "").trim().toLowerCase() === rowSubLower &&
+                                (po.color || "").trim().toLowerCase() === rowColorLower &&
+                                (po.size || "").trim().toLowerCase() === rowSizeLower
                             );
 
                             relatedPo.forEach(po => {
