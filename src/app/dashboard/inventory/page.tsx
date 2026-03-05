@@ -120,10 +120,10 @@ export default function InventoryPage() {
         fetchSubCategories();
         fetchItems();
         // 현재 유저 role 확인
-        supabase.auth.getUser().then(({ data: { user } }) => {
-            setIsAdmin(user?.user_metadata?.role === "admin");
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setIsAdmin(session?.user?.user_metadata?.role === "admin");
         });
-    }, [fetchSubCategories, fetchItems]);
+    }, [fetchSubCategories, fetchItems, supabase.auth]);
 
     const currentSubs = subCategories
         .filter((c) => c.main_category === mainTab)
@@ -143,7 +143,7 @@ export default function InventoryPage() {
                 "Pantalon tropical (P-01)",
                 "Saco tropical (C-01)",
                 "Pantalon sastrera (P-02)",
-                "Saco Sastrera (C-02)",
+                "Saco sastrera (C-02)",
                 "Pantalon gabardina (P-03)"
             ];
 
@@ -159,7 +159,8 @@ export default function InventoryPage() {
 
     const filtered = items.filter((item) => {
         const mainMatch = item.main_category === mainTab;
-        const subMatch = filterSub === "all" || item.sub_category === filterSub;
+        const subMatch = filterSub === "all" ||
+            (item.sub_category || "").trim().toLowerCase() === filterSub.trim().toLowerCase();
         return mainMatch && subMatch;
     });
 
@@ -415,7 +416,11 @@ export default function InventoryPage() {
                             </div>
                             <div className={styles.field}>
                                 <label className={styles.label}>{t("서브 카테고리", "Subcategoría")}</label>
-                                <select className={styles.input} value={form.sub_category} onChange={(e) => setForm({ ...form, sub_category: e.target.value })}>
+                                <select
+                                    className={styles.input}
+                                    value={subCategories.find(c => c.name.toLowerCase() === (form.sub_category || "").toLowerCase())?.name || form.sub_category}
+                                    onChange={(e) => setForm({ ...form, sub_category: e.target.value })}
+                                >
                                     <option value="">{t("선택 (선택사항)", "Seleccionar (opcional)")}</option>
                                     {subCategories.filter((c) => c.main_category === form.main_category).map((c) => (
                                         <option key={c.id} value={c.name}>{c.name}</option>

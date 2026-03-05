@@ -244,15 +244,17 @@ export default function ProductionPage() {
         const realQty = advanceQty > 0 ? advanceQty : order.quantity;
 
         if (nextStage === "done") {
-            // 입고 완료: inventory에 수량 추가 (advanceQty 사용)
-            const { data: existing } = await supabase
+            // 입고 완료: inventory에 수량 추가 (case-insensitive matching)
+            const { data: invItems } = await supabase
                 .from("inventory")
-                .select("id, quantity")
-                .eq("main_category", order.main_category)
-                .eq("sub_category", order.sub_category || "")
-                .eq("color", order.color || "")
-                .eq("size", order.size || "")
-                .maybeSingle();
+                .select("*")
+                .eq("main_category", order.main_category);
+
+            const existing = (invItems || []).find(i =>
+                (i.sub_category || "").trim().toLowerCase() === (order.sub_category || "").trim().toLowerCase() &&
+                (i.color || "").trim().toLowerCase() === (order.color || "").trim().toLowerCase() &&
+                (i.size || "").trim().toLowerCase() === (order.size || "").trim().toLowerCase()
+            );
 
             if (existing) {
                 await supabase
@@ -852,7 +854,7 @@ export default function ProductionPage() {
                                                             {order.color && <span className={styles.tag}>{order.color}</span>}
                                                             {order.size && <span className={styles.tag}>{order.size}</span>}
                                                         </div>
-                                                        {order.stage === "sewing" && order.sewing_factories && (
+                                                        {order.stage !== "cutting" && order.sewing_factories && (
                                                             <div className={styles.factoryLabel}>
                                                                 🏭 {order.sewing_factories.name}
                                                             </div>

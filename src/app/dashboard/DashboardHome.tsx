@@ -105,9 +105,9 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
             const cuttingQty = (cuttingOrders ?? [])
                 .filter(c =>
                     c.main_category === inv.main_category &&
-                    c.sub_category === inv.sub_category &&
-                    c.color === inv.color &&
-                    c.size === inv.size
+                    (c.sub_category || "").trim().toLowerCase() === (inv.sub_category || "").trim().toLowerCase() &&
+                    (c.color || "").trim().toLowerCase() === (inv.color || "").trim().toLowerCase() &&
+                    (c.size || "").trim().toLowerCase() === (inv.size || "").trim().toLowerCase()
                 )
                 .reduce((sum, c) => sum + (c.quantity ?? 0), 0);
             return { ...inv, cutting_qty: cuttingQty };
