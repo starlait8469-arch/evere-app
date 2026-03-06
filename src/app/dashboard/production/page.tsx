@@ -244,37 +244,45 @@ export default function ProductionPage() {
         const realQty = advanceQty > 0 ? advanceQty : order.quantity;
 
         if (nextStage === "done") {
-            // 입고 완료: inventory에 수량 추가 (case-insensitive matching)
-            const { data: invItems } = await supabase
-                .from("inventory")
-                .select("*")
-                .eq("main_category", order.main_category);
-
-            const existing = (invItems || []).find(i =>
-                (i.sub_category || "").trim().toLowerCase() === (order.sub_category || "").trim().toLowerCase() &&
-                (i.color || "").trim().toLowerCase() === (order.color || "").trim().toLowerCase() &&
-                (i.size || "").trim().toLowerCase() === (order.size || "").trim().toLowerCase()
-            );
-
-            if (existing) {
+            if (order.main_category === "Especial") {
+                // 입고 완료: Especial은 재고 추가 (inventory update) 건너뜀
                 await supabase
-                    .from("inventory")
-                    .update({ quantity: existing.quantity + realQty })
-                    .eq("id", existing.id);
+                    .from("production_orders")
+                    .update({ stage: "done", quantity: realQty, completed_at: new Date().toISOString() })
+                    .eq("id", order.id);
             } else {
-                await supabase.from("inventory").insert([{
-                    name: order.sub_category || order.main_category,
-                    main_category: order.main_category,
-                    sub_category: order.sub_category || "",
-                    color: order.color || "",
-                    size: order.size || "",
-                    quantity: realQty,
-                }]);
+                // 입고 완료: inventory에 수량 추가 (case-insensitive matching)
+                const { data: invItems } = await supabase
+                    .from("inventory")
+                    .select("*")
+                    .eq("main_category", order.main_category);
+
+                const existing = (invItems || []).find(i =>
+                    (i.sub_category || "").trim().toLowerCase() === (order.sub_category || "").trim().toLowerCase() &&
+                    (i.color || "").trim().toLowerCase() === (order.color || "").trim().toLowerCase() &&
+                    (i.size || "").trim().toLowerCase() === (order.size || "").trim().toLowerCase()
+                );
+
+                if (existing) {
+                    await supabase
+                        .from("inventory")
+                        .update({ quantity: existing.quantity + realQty })
+                        .eq("id", existing.id);
+                } else {
+                    await supabase.from("inventory").insert([{
+                        name: (order.sub_category || order.main_category).toUpperCase(),
+                        main_category: order.main_category,
+                        sub_category: order.sub_category || "",
+                        color: order.color || "",
+                        size: order.size || "",
+                        quantity: realQty,
+                    }]);
+                }
+                await supabase
+                    .from("production_orders")
+                    .update({ stage: "done", quantity: realQty, completed_at: new Date().toISOString() })
+                    .eq("id", order.id);
             }
-            await supabase
-                .from("production_orders")
-                .update({ stage: "done", quantity: realQty, completed_at: new Date().toISOString() })
-                .eq("id", order.id);
         } else if (nextStage === "returned") {
             // sewing → returned: 봉제공장에서 가게로 입고 (수량 조정 + sewing_returned_qty 기록)
             await supabase.from("production_orders")
@@ -316,7 +324,7 @@ export default function ProductionPage() {
         setRollbackModal(null);
 
         // done → finishing으로 돌릴 때 inventory에서 수량 차감
-        if (order.stage === "done") {
+        if (order.stage === "done" && order.main_category !== "Especial") {
             const { data: existing } = await supabase
                 .from("inventory")
                 .select("id, quantity")
@@ -1043,14 +1051,19 @@ export default function ProductionPage() {
                                 <select value={editForm.main_category} onChange={e => setEditForm(f => ({ ...f, main_category: e.target.value, sub_category: "" }))}>
                                     <option value="">{lang === "ko" ? "선택" : "Sel."}</option>
                                     {[...new Set(categories.map(c => c.main_category).filter(Boolean))].map(c => <option key={c} value={c}>{c}</option>)}
+                                    <option value="Especial">⭐ Especial</option>
                                 </select>
                             </div>
                             <div className={styles.editGroup}>
                                 <label>{lang === "ko" ? "서브카테고리" : "Subcategoría"}</label>
-                                <select value={editForm.sub_category} onChange={e => setEditForm(f => ({ ...f, sub_category: e.target.value }))} disabled={!editForm.main_category}>
-                                    <option value="">{lang === "ko" ? "선택" : "Sel."}</option>
-                                    {categories.filter(c => c.main_category === editForm.main_category).map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-                                </select>
+                                {editForm.main_category === "Especial" ? (
+                                    <input type="text" value={editForm.sub_category} onChange={e => setEditForm(f => ({ ...f, sub_category: e.target.value }))} />
+                                ) : (
+                                    <select value={editForm.sub_category} onChange={e => setEditForm(f => ({ ...f, sub_category: e.target.value }))} disabled={!editForm.main_category}>
+                                        <option value="">{lang === "ko" ? "선택" : "Sel."}</option>
+                                        {categories.filter(c => c.main_category === editForm.main_category).map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                                    </select>
+                                )}
                             </div>
                             <div className={styles.editGroup}>
                                 <label>{lang === "ko" ? "색상" : "Color"}</label>
@@ -1249,23 +1262,32 @@ export default function ProductionPage() {
                         </div>
                         {batchRows.map((row, i) => (
                             <div key={i} className={styles.batchRow}>
-                                {/* 메인 카테고리 */}
                                 <select
                                     value={row.main_category}
                                     onChange={e => updateBatchRow(i, "main_category", e.target.value)}
                                 >
                                     <option value="">{lang === "ko" ? "선택" : "Sel."}</option>
                                     {mainCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                                    {isAdmin && <option value="Especial">⭐ {lang === "ko" ? "Especial (수동입력)" : "Especial (Manual)"}</option>}
                                 </select>
                                 {/* 서브 카테고리 */}
-                                <select
-                                    value={row.sub_category}
-                                    onChange={e => updateBatchRow(i, "sub_category", e.target.value)}
-                                    disabled={!row.main_category}
-                                >
-                                    <option value="">{lang === "ko" ? "선택" : "Sel."}</option>
-                                    {getSubCats(row.main_category).map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
+                                {row.main_category === "Especial" ? (
+                                    <input
+                                        type="text"
+                                        placeholder={lang === "ko" ? "모델명 직접입력" : "Ingresar modelo"}
+                                        value={row.sub_category}
+                                        onChange={e => updateBatchRow(i, "sub_category", e.target.value)}
+                                    />
+                                ) : (
+                                    <select
+                                        value={row.sub_category}
+                                        onChange={e => updateBatchRow(i, "sub_category", e.target.value)}
+                                        disabled={!row.main_category}
+                                    >
+                                        <option value="">{lang === "ko" ? "선택" : "Sel."}</option>
+                                        {getSubCats(row.main_category).map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                )}
                                 {/* 사이즈 */}
                                 <input
                                     type="text"
