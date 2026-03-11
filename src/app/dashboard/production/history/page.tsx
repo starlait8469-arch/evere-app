@@ -227,17 +227,19 @@ export default function ProductionHistoryPage() {
                                             {/* 날짜 구분 헤더 행 */}
                                             <tr key={`date-${dateKey}`} className={styles.dateGroupRow}>
                                                 <td colSpan={9} className={styles.dateGroupCell}>
-                                                    <span className={styles.dateGroupLabel}>📅 {dateKey}</span>
-                                                    <span className={styles.dateGroupSummary}>
-                                                        {dayOrders.length}{lang === "ko" ? "건" : " ord."}
-                                                        {" · "}
-                                                        {lang === "ko" ? "재단" : "Corte"} {dayCut}
-                                                        {" → "}
-                                                        {lang === "ko" ? "최종" : "Final"} {dayFinal}
-                                                        {dayLoss > 0 && (
-                                                            <span className={styles.dayLoss}> −{dayLoss}</span>
-                                                        )}
-                                                    </span>
+                                                    <div className={styles.dateGroupCellInner}>
+                                                        <span className={styles.dateGroupLabel}>📅 {dateKey}</span>
+                                                        <span className={styles.dateGroupSummary}>
+                                                            {dayOrders.length}{lang === "ko" ? "건" : " ord."}
+                                                            {" · "}
+                                                            {lang === "ko" ? "재단" : "Corte"} {dayCut}
+                                                            {" → "}
+                                                            {lang === "ko" ? "최종" : "Final"} {dayFinal}
+                                                            {dayLoss > 0 && (
+                                                                <span className={styles.dayLoss}> −{dayLoss}</span>
+                                                            )}
+                                                        </span>
+                                                    </div>
                                                 </td>
                                             </tr>
                                             {/* 해당 날짜의 주문들 */}
@@ -256,19 +258,27 @@ export default function ProductionHistoryPage() {
                                                         <td>{o.color || "—"}</td>
                                                         <td>{o.size || "—"}</td>
                                                         <td>{o.sewing_factories?.name || "—"}</td>
-                                                        <td className={styles.numCell}>{cut}</td>
                                                         <td className={styles.numCell}>
-                                                            <span className={sewLoss > 0 ? styles.numLoss : ""}>{sewing}</span>
-                                                            {sewLoss > 0 && <span className={styles.lossTag}>−{sewLoss}</span>}
+                                                            <div className={styles.numCellInner}>{cut}</div>
                                                         </td>
                                                         <td className={styles.numCell}>
-                                                            <span className={plLoss > 0 ? styles.numLoss : ""}>{final}</span>
-                                                            {plLoss > 0 && <span className={styles.lossTagPurple}>−{plLoss}</span>}
+                                                            <div className={styles.numCellInner}>
+                                                                <span className={sewLoss > 0 ? styles.numLoss : ""}>{sewing}</span>
+                                                                {sewLoss > 0 && <span className={styles.lossTag}>−{sewLoss}</span>}
+                                                            </div>
                                                         </td>
                                                         <td className={styles.numCell}>
-                                                            {totalLoss > 0
-                                                                ? <span className={styles.totalLoss}>−{totalLoss}</span>
-                                                                : <span className={styles.totalOk}>✓</span>}
+                                                            <div className={styles.numCellInner}>
+                                                                <span className={plLoss > 0 ? styles.numLoss : ""}>{final}</span>
+                                                                {plLoss > 0 && <span className={styles.lossTagPurple}>−{plLoss}</span>}
+                                                            </div>
+                                                        </td>
+                                                        <td className={styles.numCell}>
+                                                            <div className={styles.numCellInner}>
+                                                                {totalLoss > 0
+                                                                    ? <span className={styles.totalLoss}>−{totalLoss}</span>
+                                                                    : <span className={styles.totalOk}>✓</span>}
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 );

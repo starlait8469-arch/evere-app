@@ -1,0 +1,5 @@
+categories no duplicates
+inventory duplicates: sh-01, sh-02, p-02, s-01, ch-01, ph-01, s-03, s-02, s-04, sk-01, p-01, c-01, c-02, p-03
+fabric_inventory no duplicates
+sewing_factories no duplicates
+fabric_suppliers no duplicates

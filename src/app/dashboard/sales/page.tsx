@@ -32,6 +32,7 @@ export default function SalesPage() {
     const [confirmSale, setConfirmSale] = useState<{ id: string, name: string, sub: string, qty: number } | null>(null);
 
     const supabase = createClient();
+    const [filterMain, setFilterMain] = useState("all");
     const [filterSub, setFilterSub] = useState("all");
 
     useEffect(() => {
@@ -115,10 +116,19 @@ export default function SalesPage() {
         setLoading(false);
     };
 
-    // 현재 있는 서브 카테고리 목록 추출
-    const availableSubs = Array.from(new Set(items.map(i => i.sub_category).filter(Boolean)));
+    // 현재 있는 메인/서브 카테고리 목록 추출 (캐스케이딩)
+    const availableMains = Array.from(new Set(items.map(i => i.main_category).filter(Boolean)));
+    const availableSubs = Array.from(new Set(
+        items
+            .filter(i => filterMain === "all" || i.main_category === filterMain)
+            .map(i => i.sub_category)
+            .filter(Boolean)
+    ));
 
-    const filtered = items.filter(item => filterSub === "all" || item.sub_category === filterSub);
+    const filtered = items.filter(item =>
+        (filterMain === "all" || item.main_category === filterMain) &&
+        (filterSub === "all" || item.sub_category === filterSub)
+    );
 
     const handleSellInput = (id: string, value: string) => {
         setSellInputs(prev => ({ ...prev, [id]: value }));
@@ -198,14 +208,30 @@ export default function SalesPage() {
                 </p>
             </div>
 
-            <select
-                className={styles.subSelect}
-                value={filterSub}
-                onChange={(e) => setFilterSub(e.target.value)}
-            >
-                <option value="all">{t("viewAll") || "전체 보기"}</option>
-                {availableSubs.map(sub => <option key={sub} value={sub}>{sub}</option>)}
-            </select>
+            <div style={{ display: "flex", gap: "12px", padding: "0 20px 16px" }}>
+                <select
+                    className={styles.subSelect}
+                    value={filterMain}
+                    onChange={(e) => {
+                        setFilterMain(e.target.value);
+                        setFilterSub("all"); // 카테고리 변경 시 서브카테고리 초기화
+                    }}
+                    style={{ flex: 1, margin: 0 }}
+                >
+                    <option value="all">{lang === "ko" ? "카테고리 전체" : "Todas las Categorías"}</option>
+                    {availableMains.map(main => <option key={main} value={main}>{main}</option>)}
+                </select>
+
+                <select
+                    className={styles.subSelect}
+                    value={filterSub}
+                    onChange={(e) => setFilterSub(e.target.value)}
+                    style={{ flex: 2, margin: 0 }}
+                >
+                    <option value="all">{lang === "ko" ? "서브카테고리 전체" : "Todas las Subcategorías"}</option>
+                    {availableSubs.map(sub => <option key={sub} value={sub}>{sub}</option>)}
+                </select>
+            </div>
 
             {loading ? (
                 <div className={styles.loading}>Loading...</div>

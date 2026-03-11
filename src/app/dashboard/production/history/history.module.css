@@ -206,6 +206,9 @@
 .numCell {
     text-align: right;
     font-weight: 700;
+}
+
+.numCellInner {
     display: flex;
     align-items: center;
     justify-content: flex-end;
@@ -259,6 +262,9 @@
 
 .dateGroupCell {
     padding: 10px 14px !important;
+}
+
+.dateGroupCellInner {
     display: flex;
     align-items: center;
     gap: 12px;

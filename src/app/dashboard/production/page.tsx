@@ -14,11 +14,15 @@ type ProductionOrder = {
     color: string;
     size: string;
     quantity: number;
-    original_qty: number | null;       // 재단 원래 수량
-    sewing_returned_qty: number | null; // 봉제에서 돌아온 수량
+    original_qty: number | null;
+    sewing_returned_qty: number | null;
     stage: Stage;
     factory_id: string | null;
     created_at: string;
+    sewing_sent_at: string | null;
+    sewing_returned_at: string | null;
+    finishing_sent_at: string | null;
+    done_at: string | null;
     sewing_factories?: { name: string } | null;
 };
 
@@ -63,7 +67,15 @@ export default function ProductionPage() {
     const [filterStage, setFilterStage] = useState<Stage | "all">("all");
 
     // 탭
-    const [tab, setTab] = useState<"status" | "new" | "fabric">("status");
+    const [tab, setTab] = useState<"status" | "new" | "fabric" | "slips">("status");
+
+    // auth token (전표 API 호출용)
+    const [token, setToken] = useState("");
+
+    // 전표 기록
+    type SlipRecord = { id: string; slip_type: string; factory_name: string | null; slip_date: string; orders: any[]; created_at: string };
+    const [slips, setSlips] = useState<SlipRecord[]>([]);
+    const [slipsLoading, setSlipsLoading] = useState(false);
 
     // 천 재고
     type FabricItem = { id: string; name: string; quantity: number; unit: string; note: string | null };
@@ -108,15 +120,27 @@ export default function ProductionPage() {
     const [editForm, setEditForm] = useState({ main_category: "", sub_category: "", color: "", size: "", quantity: "" });
 
     useEffect(() => {
-        // 관리자 체크
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (session?.user.user_metadata?.role === "admin") setIsAdmin(true);
+            setToken(session?.access_token || "");
         });
         fetchOrders();
         fetchFactories();
         fetchCategories();
         fetchFabrics();
     }, []);
+
+    const fetchSlips = async () => {
+        setSlipsLoading(true);
+        try {
+            const res = await fetch("/api/production-slips", {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await res.json();
+            setSlips(Array.isArray(data) ? data : []);
+        } catch { setSlips([]); }
+        setSlipsLoading(false);
+    };
 
 
     const fetchOrders = async () => {
@@ -245,13 +269,11 @@ export default function ProductionPage() {
 
         if (nextStage === "done") {
             if (order.main_category === "Especial") {
-                // 입고 완료: Especial은 재고 추가 (inventory update) 건너뜀
                 await supabase
                     .from("production_orders")
-                    .update({ stage: "done", quantity: realQty, completed_at: new Date().toISOString() })
+                    .update({ stage: "done", quantity: realQty, completed_at: new Date().toISOString(), done_at: new Date().toISOString() })
                     .eq("id", order.id);
             } else {
-                // 입고 완료: inventory에 수량 추가 (case-insensitive matching)
                 const { data: invItems } = await supabase
                     .from("inventory")
                     .select("*")
@@ -280,20 +302,18 @@ export default function ProductionPage() {
                 }
                 await supabase
                     .from("production_orders")
-                    .update({ stage: "done", quantity: realQty, completed_at: new Date().toISOString() })
+                    .update({ stage: "done", quantity: realQty, completed_at: new Date().toISOString(), done_at: new Date().toISOString() })
                     .eq("id", order.id);
             }
         } else if (nextStage === "returned") {
-            // sewing → returned: 봉제공장에서 가게로 입고 (수량 조정 + sewing_returned_qty 기록)
             await supabase.from("production_orders")
-                .update({ stage: "returned", quantity: realQty, sewing_returned_qty: realQty })
+                .update({ stage: "returned", quantity: realQty, sewing_returned_qty: realQty, sewing_returned_at: new Date().toISOString() })
                 .eq("id", order.id);
         } else if (nextStage === "finishing") {
-            // returned → finishing(Plancha): 수량 변경 없이 바로 이동
+            const now = new Date().toISOString();
             await supabase.from("production_orders")
-                .update({ stage: "finishing" })
+                .update({ stage: "finishing", finishing_sent_at: now })
                 .eq("id", order.id);
-            // Plancha 출고전표
             const date = new Date().toLocaleDateString("es-AR");
             setPlanchaSlip({
                 factoryName: "Plancha",
@@ -368,20 +388,25 @@ export default function ProductionPage() {
     // plancha 발송 실행 + 인쇄 슬립 생성
     const doBulkPlancha = async () => {
         if (!planchaModal) return;
+        const now = new Date().toISOString();
         for (const item of planchaModal) {
             await supabase.from("production_orders")
-                .update({ stage: "finishing", quantity: item.qty, sewing_returned_qty: item.qty })
+                .update({ stage: "finishing", quantity: item.qty, sewing_returned_qty: item.qty, finishing_sent_at: now })
                 .eq("id", item.order.id);
         }
         const date = new Date().toLocaleDateString("es-AR");
-        setPlanchaSlip({
+        const slip = {
             factoryName: "Plancha",
             date,
-            orders: planchaModal.map(item => ({
-                ...item.order,
-                quantity: item.qty,
-            })),
-        });
+            orders: planchaModal.map(item => ({ ...item.order, quantity: item.qty })),
+        };
+        setPlanchaSlip(slip);
+        // 전표 저장
+        fetch("/api/production-slips", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ slip_type: "plancha", factory_name: null, slip_date: date, orders: slip.orders }),
+        }).catch(console.error);
         setPlanchaModal(null);
         setSelectedSewingIds(new Set());
         fetchOrders();
@@ -591,11 +616,12 @@ export default function ProductionPage() {
         // 발송할 주문 정보 수집 (인쇄용)
         const dispatchOrders = orders.filter(o => ids.includes(o.id));
         const factoryObj = factories.find(f => f.id === selectedFactory);
+        const now = new Date().toISOString();
 
         for (const id of ids) {
             await supabase
                 .from("production_orders")
-                .update({ stage: "sewing", factory_id: selectedFactory })
+                .update({ stage: "sewing", factory_id: selectedFactory, sewing_sent_at: now })
                 .eq("id", id);
         }
         setFactoryModal(null);
@@ -603,11 +629,19 @@ export default function ProductionPage() {
 
         // 출고전표 데이터 저장 → 인쇄 유도
         if (factoryObj && dispatchOrders.length > 0) {
-            setDispatchSlip({
+            const date = new Date().toLocaleDateString("ko-KR");
+            const slip = {
                 factoryName: factoryObj.name,
-                date: new Date().toLocaleDateString("ko-KR"),
+                date,
                 orders: dispatchOrders,
-            });
+            };
+            setDispatchSlip(slip);
+            // 전표 저장
+            fetch("/api/production-slips", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ slip_type: "sewing", factory_name: factoryObj.name, slip_date: date, orders: dispatchOrders }),
+            }).catch(console.error);
         }
 
         fetchOrders();
@@ -706,6 +740,12 @@ export default function ProductionPage() {
                     onClick={() => setTab("fabric")}
                 >
                     🧵 {lang === "ko" ? "천 재고" : "Telas"}
+                </button>
+                <button
+                    className={`${styles.tab} ${tab === "slips" ? styles.tabActive : ""}`}
+                    onClick={() => { setTab("slips"); fetchSlips(); }}
+                >
+                    📋 {lang === "ko" ? "전표 기록" : "Historial"}
                 </button>
             </div>
 
@@ -889,8 +929,31 @@ export default function ProductionPage() {
                                                                     </span>
                                                                 </div>
                                                             )}
-                                                        <div className={styles.cardDate}>
-                                                            {new Date(order.created_at).toLocaleDateString()}
+                                                        {/* 단계 타임스탬프 */}
+                                                        <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 2 }}>
+                                                            <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                                                                ✂️ {lang === "ko" ? "재단" : "Corte"}: {new Date(order.created_at).toLocaleDateString()}
+                                                            </div>
+                                                            {order.sewing_sent_at && (
+                                                                <div style={{ fontSize: 11, color: "#3b82f6" }}>
+                                                                    🏭 {lang === "ko" ? "봉제발송" : "Costura"}: {new Date(order.sewing_sent_at).toLocaleDateString()}
+                                                                </div>
+                                                            )}
+                                                            {order.sewing_returned_at && (
+                                                                <div style={{ fontSize: 11, color: "#10b981" }}>
+                                                                    📦 {lang === "ko" ? "봉제입고" : "Recib."}: {new Date(order.sewing_returned_at).toLocaleDateString()}
+                                                                </div>
+                                                            )}
+                                                            {order.finishing_sent_at && (
+                                                                <div style={{ fontSize: 11, color: "#8b5cf6" }}>
+                                                                    🔧 Plancha: {new Date(order.finishing_sent_at).toLocaleDateString()}
+                                                                </div>
+                                                            )}
+                                                            {order.done_at && (
+                                                                <div style={{ fontSize: 11, color: "#6b7280" }}>
+                                                                    ✅ {lang === "ko" ? "완료" : "Listo"}: {new Date(order.done_at).toLocaleDateString()}
+                                                                </div>
+                                                            )}
                                                         </div>
 
                                                         <div className={styles.cardActions}>
@@ -1464,6 +1527,75 @@ export default function ProductionPage() {
                                                 <button className={styles.fabricCancelBtn} onClick={() => setFabricAction(null)}>✕</button>
                                             </div>
                                         )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ─── 탭4: 전표 기록 ─── */}
+            {tab === "slips" && (
+                <div style={{ padding: "0 4px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                        <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>
+                            📋 {lang === "ko" ? "출고전표 기록" : "Historial de Remisiones"}
+                        </h2>
+                        <button
+                            onClick={fetchSlips}
+                            style={{ fontSize: 13, padding: "6px 14px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}
+                        >↺ {lang === "ko" ? "새로고침" : "Actualizar"}</button>
+                    </div>
+
+                    {slipsLoading ? (
+                        <div style={{ textAlign: "center", color: "var(--text-muted)", padding: 40 }}>Loading...</div>
+                    ) : slips.length === 0 ? (
+                        <div style={{ textAlign: "center", color: "var(--text-muted)", padding: 40 }}>
+                            {lang === "ko" ? "저장된 전표가 없습니다." : "No hay remisiones guardadas."}
+                        </div>
+                    ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                            {slips.map(slip => {
+                                const isSewing = slip.slip_type === "sewing";
+                                const color = isSewing ? "#3b82f6" : "#8b5cf6";
+                                const label = isSewing
+                                    ? (lang === "ko" ? "봉제 발송" : "Costura")
+                                    : (lang === "ko" ? "Plancha 발송" : "Plancha");
+                                return (
+                                    <div key={slip.id} style={{
+                                        background: "var(--surface)",
+                                        border: "1px solid var(--border)",
+                                        borderRadius: 10,
+                                        padding: "14px 18px",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 16,
+                                        flexWrap: "wrap",
+                                    }}>
+                                        <div style={{ flexShrink: 0, background: color + "20", color, padding: "4px 10px", borderRadius: 6, fontSize: 12, fontWeight: 700 }}>
+                                            {isSewing ? "🏭" : "🔧"} {label}
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text)" }}>
+                                                {slip.factory_name ? `🏭 ${slip.factory_name} — ` : ""}{slip.slip_date}
+                                            </div>
+                                            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                                                {lang === "ko" ? `${slip.orders.length}개 품목` : `${slip.orders.length} artículo(s)`}
+                                                {" · "}
+                                                {new Date(slip.created_at).toLocaleString()}
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                const s = { factoryName: slip.factory_name || (isSewing ? "봉제" : "Plancha"), date: slip.slip_date, orders: slip.orders };
+                                                if (isSewing) printDispatchSlip(s);
+                                                else printPlanchaSlip(s);
+                                            }}
+                                            style={{ fontSize: 13, padding: "7px 16px", borderRadius: 6, border: `1px solid ${color}`, background: "transparent", color, cursor: "pointer", fontWeight: 600, flexShrink: 0 }}
+                                        >
+                                            🖨️ {lang === "ko" ? "재인쇄" : "Reimprimir"}
+                                        </button>
                                     </div>
                                 );
                             })}

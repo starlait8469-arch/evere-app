@@ -14,26 +14,50 @@ export default async function DashboardPage() {
 
     const inProgress = productionOrders?.length ?? 0;
 
-    // 재단하기: 재고 낮고(< threshold) + cutting 단계 주문 없는 품목
-    const { data: lowStockItems } = await supabase
+    // (inventory) 현재 재고 조회
+    const { data: inventoryData } = await supabase
         .from("inventory")
-        .select("main_category, sub_category, color, size, quantity")
-        .lt("quantity", LOW_STOCK_THRESHOLD);
+        .select("main_category, sub_category, color, size, quantity");
+    const inventory = inventoryData || [];
 
     const { data: cuttingOrders } = await supabase
         .from("production_orders")
         .select("main_category, sub_category, color, size")
         .eq("stage", "cutting");
 
-    const needsCut = (lowStockItems || []).filter(inv => {
+    // 재단하기: 재고 낮고(< threshold) + cutting 단계 주문 없는 품목 (중복 레코드 합산 후 판단)
+    const groupedMap = new Map<string, any>();
+    inventory.forEach(inv => {
+        const m = (inv.main_category || "").trim().toLowerCase();
+        const s = (inv.sub_category || "").trim().toLowerCase();
+        const c = (inv.color || "").trim().toLowerCase();
+        const sz = (inv.size || "").trim().toLowerCase();
+        const key = `${m}|${s}|${c}|${sz}`;
+
+        if (groupedMap.has(key)) {
+            groupedMap.get(key)!.quantity += (inv.quantity || 0);
+        } else {
+            groupedMap.set(key, { ...inv });
+        }
+    });
+
+    const needCutItems = Array.from(groupedMap.values()).filter(inv => {
+        if (inv.quantity >= LOW_STOCK_THRESHOLD) return false; // 합치고 나서도 재고가 충분히 있으면 노출 안 함
+
+        const invMainLower = (inv.main_category || "").trim().toLowerCase();
+        const invSubLower = (inv.sub_category || "").trim().toLowerCase();
+        const invColorLower = (inv.color || "").trim().toLowerCase();
+        const invSizeLower = (inv.size || "").trim().toLowerCase();
+
         const hasCutting = (cuttingOrders || []).some(c =>
-            c.main_category === inv.main_category &&
-            c.sub_category === inv.sub_category &&
-            c.color === inv.color &&
-            c.size === inv.size
+            (c.main_category || "").trim().toLowerCase() === invMainLower &&
+            (c.sub_category || "").trim().toLowerCase() === invSubLower &&
+            (c.color || "").trim().toLowerCase() === invColorLower &&
+            (c.size || "").trim().toLowerCase() === invSizeLower
         );
         return !hasCutting;
-    }).length;
+    });
+    const needsCut = needCutItems.length;
 
     // 봉제 현황: sewing + returned 단계 주문 건수
     const sewingCount = productionOrders?.filter(o => o.stage === "sewing" || o.stage === "returned").length ?? 0;
@@ -46,25 +70,18 @@ export default async function DashboardPage() {
 
     const sewingOrders = sewingOrdersData || [];
 
-    // (inventory) 현재 재고 조회
-    const { data: inventoryData } = await supabase
-        .from("inventory")
-        .select("main_category, sub_category, color, size, quantity");
-
-    const inventory = inventoryData || [];
-
-    // sewing 품목 각각에 대해 잔여 재고 매핑 (대소문자 무시)
+    // sewing 품목 각각에 대해 잔여 재고 매핑 (대소문자, 공백 무시)
     const needsPlanchaItems = sewingOrders.map(order => {
-        const orderMainLower = (order.main_category || "").toLowerCase();
-        const orderSubLower = (order.sub_category || "").toLowerCase();
-        const orderColorLower = (order.color || "").toLowerCase();
-        const orderSizeLower = (order.size || "").toLowerCase();
+        const orderMainLower = (order.main_category || "").trim().toLowerCase();
+        const orderSubLower = (order.sub_category || "").trim().toLowerCase();
+        const orderColorLower = (order.color || "").trim().toLowerCase();
+        const orderSizeLower = (order.size || "").trim().toLowerCase();
 
         const stockItem = inventory.find(inv =>
-            (inv.main_category || "").toLowerCase() === orderMainLower &&
-            (inv.sub_category || "").toLowerCase() === orderSubLower &&
-            (inv.color || "").toLowerCase() === orderColorLower &&
-            (inv.size || "").toLowerCase() === orderSizeLower
+            (inv.main_category || "").trim().toLowerCase() === orderMainLower &&
+            (inv.sub_category || "").trim().toLowerCase() === orderSubLower &&
+            (inv.color || "").trim().toLowerCase() === orderColorLower &&
+            (inv.size || "").trim().toLowerCase() === orderSizeLower
         );
         return {
             ...order,
@@ -87,12 +104,10 @@ export default async function DashboardPage() {
 
     const needsPlanchaCount = needsPlanchaItems.length;
 
-    // 오늘 자정(UTC-3 아르헨티나 기준이거나 로컬 타임 기준, 단순화를 위해 브라우저 접속 일자와 맞추기 위한 로컬 자정 처리, 서버사이드에선 UTC)
-    // 일단 UTC 기준으로 오늘 시작 시간
+    // 오늘 원단 입고 여부
     const todayMidnight = new Date();
     todayMidnight.setHours(0, 0, 0, 0);
 
-    // 오늘 하루 원단 입고 여부 (fabric_inventory의 last_restocked_at 확인)
     const { data: newFabricData } = await supabase
         .from("fabric_inventory")
         .select("id")
@@ -100,6 +115,37 @@ export default async function DashboardPage() {
         .limit(1);
 
     const hasNewFabricToday = (newFabricData && newFabricData.length > 0) ? true : false;
+
+    // ─── 납품 가능한 가게 주문 알림 ───
+    // pending/partial 상태 주문 중, 모든 잔여 품목이 재고로 커버되는 주문 목록
+    const { data: pendingOrdersData } = await supabase
+        .from("store_orders")
+        .select("id, order_number, customer_name, store_order_items(main_category, sub_category, color, size, quantity, delivered_qty)")
+        .in("status", ["pending", "partial"]);
+
+    const readyToDeliverOrders = (pendingOrdersData || []).filter(order => {
+        const items = (order.store_order_items as any[]) || [];
+        if (items.length === 0) return false;
+        // 모든 품목의 잔여 수량이 재고로 커버되는지 확인
+        return items.every(item => {
+            const remaining = item.quantity - (item.delivered_qty ?? 0);
+            if (remaining <= 0) return true; // 이미 납품 완료된 품목은 pass
+            // 재고 조회
+            const inv = inventory.find(i =>
+                (i.main_category || "").toLowerCase() === (item.main_category || "").toLowerCase() &&
+                (i.sub_category || "").toLowerCase() === (item.sub_category || "").toLowerCase() &&
+                (i.color || "").toLowerCase() === (item.color || "").toLowerCase() &&
+                (i.size || "").toLowerCase() === (item.size || "").toLowerCase()
+            );
+            return (inv?.quantity ?? 0) >= remaining;
+        });
+    }).map(o => ({
+        id: o.id,
+        order_number: o.order_number,
+        customer_name: o.customer_name,
+    }));
+
+    const readyToDeliverCount = readyToDeliverOrders.length;
 
     return (
         <DashboardHome
@@ -109,6 +155,9 @@ export default async function DashboardPage() {
             needsPlanchaCount={needsPlanchaCount}
             needsPlanchaItems={needsPlanchaItems.slice(0, 50)} // 상위 50개 제한
             hasNewFabricToday={hasNewFabricToday}
+            readyToDeliverCount={readyToDeliverCount}
+            readyToDeliverOrders={readyToDeliverOrders}
         />
     );
 }
+

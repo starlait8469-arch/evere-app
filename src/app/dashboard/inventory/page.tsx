@@ -56,6 +56,7 @@ export default function InventoryPage() {
     const [catLoading, setCatLoading] = useState(false);
     const [deleteCatConfirm, setDeleteCatConfirm] = useState<string | null>(null);
     const [editCatId, setEditCatId] = useState<string | null>(null);
+    const [editCatName, setEditCatName] = useState("");
     const [editCatPrice, setEditCatPrice] = useState("0");
 
     const fetchSubCategories = useCallback(async () => {
@@ -123,7 +124,8 @@ export default function InventoryPage() {
         supabase.auth.getSession().then(({ data: { session } }) => {
             setIsAdmin(session?.user?.user_metadata?.role === "admin");
         });
-    }, [fetchSubCategories, fetchItems, supabase.auth]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [fetchSubCategories, fetchItems]);
 
     const currentSubs = subCategories
         .filter((c) => c.main_category === mainTab)
@@ -187,7 +189,12 @@ export default function InventoryPage() {
         if (!form.name.trim()) { setFormError(t("품목명을 입력하세요.", "Ingresa el nombre del artículo.")); return; }
         if (form.quantity < 0) { setFormError(t("수량은 0 이상이어야 합니다.", "La cantidad debe ser 0 o más.")); return; }
         setFormLoading(true);
-        const payload = { ...form, quantity: Number(form.quantity) };
+        const payload = {
+            ...form,
+            name: form.name.toUpperCase(),
+            sub_category: form.sub_category,
+            quantity: Number(form.quantity)
+        };
         if (editItem) {
             const { error } = await supabase.from("inventory").update(payload).eq("id", editItem.id);
             if (error) { setFormError(error.message); setFormLoading(false); return; }
@@ -234,7 +241,7 @@ export default function InventoryPage() {
         e.preventDefault();
         if (!newSubCat.trim()) return;
         // 대소문자 무시 중복 체크
-        const trimmed = newSubCat.trim();
+        const trimmed = newSubCat.trim().toUpperCase();
         const priceNum = parseInt(newSubCatPrice, 10) || 0;
         const isDuplicate = subCategories.some(
             c => c.main_category === newSubCatMain &&
@@ -252,10 +259,12 @@ export default function InventoryPage() {
         fetchSubCategories();
     };
 
-    const handleUpdateSubCatPrice = async (id: string) => {
+    const handleUpdateSubCat = async (id: string) => {
         const priceNum = parseInt(editCatPrice, 10) || 0;
+        const nameVal = editCatName.trim().toUpperCase();
+        if (!nameVal) return;
         setCatLoading(true);
-        const { error } = await supabase.from("categories").update({ price: priceNum }).eq("id", id);
+        const { error } = await supabase.from("categories").update({ price: priceNum, name: nameVal }).eq("id", id);
         if (error) {
             console.error("Update error:", error);
             alert("저장 실패: " + error.message);
@@ -335,9 +344,15 @@ export default function InventoryPage() {
                                 ) : (
                                     subCategories.filter((c) => c.main_category === mc).map((cat) => (
                                         <div key={cat.id} className={styles.catItem}>
-                                            <span style={{ flex: 1 }}>{cat.name}</span>
                                             {editCatId === cat.id ? (
-                                                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                                <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flex: 1 }}>
+                                                    <input
+                                                        type="text"
+                                                        className={styles.catInput}
+                                                        style={{ flex: 1, padding: "4px" }}
+                                                        value={editCatName}
+                                                        onChange={(e) => setEditCatName(e.target.value)}
+                                                    />
                                                     <input
                                                         type="number"
                                                         className={styles.catInput}
@@ -345,7 +360,7 @@ export default function InventoryPage() {
                                                         value={editCatPrice}
                                                         onChange={(e) => setEditCatPrice(e.target.value)}
                                                     />
-                                                    <button className={styles.confirmYes} disabled={catLoading} onClick={() => handleUpdateSubCatPrice(cat.id)}>
+                                                    <button className={styles.confirmYes} disabled={catLoading} onClick={() => handleUpdateSubCat(cat.id)}>
                                                         {t("저장", "Guardar")}
                                                     </button>
                                                     <button className={styles.confirmNo} onClick={() => setEditCatId(null)}>
@@ -353,9 +368,12 @@ export default function InventoryPage() {
                                                     </button>
                                                 </div>
                                             ) : (
-                                                <span style={{ fontSize: "14px", color: "#666", marginRight: "10px", cursor: "pointer" }} onClick={() => { setEditCatId(cat.id); setEditCatPrice(String(cat.price || 0)); }}>
-                                                    ${(cat.price || 0).toLocaleString()} ✏️
-                                                </span>
+                                                <div style={{ flex: 1, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => { setEditCatId(cat.id); setEditCatName(cat.name); setEditCatPrice(String(cat.price || 0)); }}>
+                                                    <span>{cat.name}</span>
+                                                    <span style={{ fontSize: "14px", color: "#666", marginRight: "10px" }}>
+                                                        ${(cat.price || 0).toLocaleString()} ✏️
+                                                    </span>
+                                                </div>
                                             )}
 
                                             {deleteCatConfirm === cat.id ? (
@@ -546,7 +564,7 @@ export default function InventoryPage() {
                         </div>
                         <div className={styles.itemCardMeta}>
                             {item.color && <span className={styles.metaTag}>🎨 {item.color}</span>}
-                            {item.size && <span className={styles.metaTag}>📐 {item.size}</span>}
+                            {item.size && <span className={styles.metaTag}>{t("사이즈", "Talla")} {item.size}</span>}
                         </div>
                         {/* 모바일: 수량 + 입고 */}
                         {qtyInput?.id === item.id ? (

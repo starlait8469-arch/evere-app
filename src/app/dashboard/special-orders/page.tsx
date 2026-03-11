@@ -43,6 +43,12 @@ export default function SpecialOrdersPage() {
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [filterStatus, setFilterStatus] = useState<"all" | "active" | "done">("active");
 
+    // Edit state
+    const [editingOrder, setEditingOrder] = useState<SpecialOrder | null>(null);
+    const [editCustomer, setEditCustomer] = useState("");
+    const [editOrderDate, setEditOrderDate] = useState("");
+    const [editDueDate, setEditDueDate] = useState("");
+
     // Form state
     const [customerName, setCustomerName] = useState("");
     const [orderDate, setOrderDate] = useState(todayStr());
@@ -99,6 +105,27 @@ export default function SpecialOrdersPage() {
 
     const saveMemo = async (id: string, newMemo: string) => {
         await supabase.from("special_orders").update({ memo: newMemo }).eq("id", id);
+    };
+
+    const startEdit = (order: SpecialOrder) => {
+        setEditingOrder(order);
+        setEditCustomer(order.customer_name);
+        setEditOrderDate(order.order_date);
+        setEditDueDate(order.due_date);
+        setExpandedId(order.id);
+    };
+
+    const updateOrder = async () => {
+        if (!editingOrder || !editCustomer.trim()) return;
+        setSaving(true);
+        await supabase.from("special_orders").update({
+            customer_name: editCustomer.trim(),
+            order_date: editOrderDate,
+            due_date: editDueDate,
+        }).eq("id", editingOrder.id);
+        setSaving(false);
+        setEditingOrder(null);
+        fetchOrders();
     };
 
     if (!isAdmin) return null;
@@ -240,27 +267,63 @@ export default function SpecialOrdersPage() {
                                 {/* Expanded */}
                                 {isExpanded && (
                                     <div className={styles.cardDetail}>
-                                        <textarea
-                                            className={styles.memoEditArea}
-                                            defaultValue={order.memo ?? ""}
-                                            onBlur={e => saveMemo(order.id, e.target.value)}
-                                            placeholder={lang === "ko" ? "메모..." : "Nota..."}
-                                            rows={8}
-                                        />
-                                        <div className={styles.cardActions}>
-                                            {!isDone ? (
-                                                <button className={styles.doneBtn} onClick={() => setStatus(order.id, "done")}>
-                                                    ✅ {lang === "ko" ? "완료 처리" : "Completar"}
-                                                </button>
-                                            ) : (
-                                                <button className={styles.reopenBtn} onClick={() => setStatus(order.id, "active")}>
-                                                    🔄 {lang === "ko" ? "재개" : "Reabrir"}
-                                                </button>
-                                            )}
-                                            <button className={styles.deleteBtn} onClick={() => deleteOrder(order.id)}>
-                                                🗑 {lang === "ko" ? "삭제" : "Eliminar"}
-                                            </button>
-                                        </div>
+                                        {editingOrder?.id === order.id ? (
+                                            <div style={{ background: "var(--surface)", padding: "16px", borderRadius: "8px", border: "1px solid var(--border)", marginBottom: "16px" }}>
+                                                <div className={styles.formRow}>
+                                                    <div className={styles.formGroup}>
+                                                        <label className={styles.formLabel}>👤 {lang === "ko" ? "고객 이름" : "Cliente"}</label>
+                                                        <input
+                                                            className={styles.formInput}
+                                                            value={editCustomer}
+                                                            onChange={e => setEditCustomer(e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className={styles.formGroup}>
+                                                        <label className={styles.formLabel}>📅 {lang === "ko" ? "주문 날짜" : "Fecha pedido"}</label>
+                                                        <input type="date" className={styles.formInput} value={editOrderDate} onChange={e => setEditOrderDate(e.target.value)} />
+                                                    </div>
+                                                    <div className={styles.formGroup}>
+                                                        <label className={styles.formLabel}>⏰ {lang === "ko" ? "납품 기일" : "Fecha entrega"}</label>
+                                                        <input type="date" className={styles.formInput} value={editDueDate} onChange={e => setEditDueDate(e.target.value)} />
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: "flex", gap: "8px", marginTop: "12px", justifyContent: "flex-end" }}>
+                                                    <button onClick={() => setEditingOrder(null)} style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: "13px" }}>
+                                                        {lang === "ko" ? "취소" : "Cancelar"}
+                                                    </button>
+                                                    <button onClick={updateOrder} disabled={!editCustomer.trim() || saving} style={{ padding: "6px 12px", borderRadius: "6px", border: "none", background: "#3b82f6", color: "white", cursor: "pointer", fontSize: "13px", fontWeight: "bold" }}>
+                                                        {saving ? "..." : `💾 ${lang === "ko" ? "저장" : "Guardar"}`}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <textarea
+                                                    className={styles.memoEditArea}
+                                                    defaultValue={order.memo ?? ""}
+                                                    onBlur={e => saveMemo(order.id, e.target.value)}
+                                                    placeholder={lang === "ko" ? "메모..." : "Nota..."}
+                                                    rows={8}
+                                                />
+                                                <div className={styles.cardActions}>
+                                                    {!isDone ? (
+                                                        <button className={styles.doneBtn} onClick={() => setStatus(order.id, "done")}>
+                                                            ✅ {lang === "ko" ? "완료 처리" : "Completar"}
+                                                        </button>
+                                                    ) : (
+                                                        <button className={styles.reopenBtn} onClick={() => setStatus(order.id, "active")}>
+                                                            🔄 {lang === "ko" ? "재개" : "Reabrir"}
+                                                        </button>
+                                                    )}
+                                                    <button className={styles.doneBtn} style={{ background: "transparent", color: "#3b82f6", border: "1px solid #3b82f6" }} onClick={() => startEdit(order)}>
+                                                        ✏️ {lang === "ko" ? "수정" : "Editar"}
+                                                    </button>
+                                                    <button className={styles.deleteBtn} onClick={() => deleteOrder(order.id)}>
+                                                        🗑 {lang === "ko" ? "삭제" : "Eliminar"}
+                                                    </button>
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 )}
                             </div>

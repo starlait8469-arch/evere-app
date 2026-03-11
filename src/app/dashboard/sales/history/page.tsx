@@ -45,7 +45,9 @@ export default function SalesHistoryPage() {
     const { t, lang } = useLanguage();
     const router = useRouter();
 
-    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
+    const [selectedDate, setSelectedDate] = useState(() => {
+        return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    });
     const [salesList, setSalesList] = useState<SalesHistoryItem[]>([]);
     const [deliveriesList, setDeliveriesList] = useState<DeliveryHistoryItem[]>([]);
     const [loading, setLoading] = useState(true);

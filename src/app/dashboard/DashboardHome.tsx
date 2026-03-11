@@ -13,6 +13,8 @@ interface Props {
     needsPlanchaCount: number;
     needsPlanchaItems: any[];
     hasNewFabricToday: boolean;
+    readyToDeliverCount: number;
+    readyToDeliverOrders: { id: string; order_number: string | null; customer_name: string | null }[];
 }
 
 type Stage = "cutting" | "sewing" | "returned" | "finishing" | "done";
@@ -36,7 +38,7 @@ interface FactoryOrder {
 
 const LOW_STOCK_THRESHOLD = 10;
 
-export default function DashboardHome({ inProgress, needsCut, sewingCount, needsPlanchaCount, needsPlanchaItems, hasNewFabricToday }: Props) {
+export default function DashboardHome({ inProgress, needsCut, sewingCount, needsPlanchaCount, needsPlanchaItems, hasNewFabricToday, readyToDeliverCount, readyToDeliverOrders }: Props) {
     const { t, lang } = useLanguage();
     const supabase = createClient();
 
@@ -66,6 +68,20 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
         setShowAlert(false);
     };
 
+    // ── 납품 가능 주문 알림 ──
+    const [showDeliverAlert, setShowDeliverAlert] = useState(false);
+    useEffect(() => {
+        if (readyToDeliverCount > 0) {
+            const dismissed = localStorage.getItem("deliver_alert_dismissed");
+            const todayStr = new Date().toLocaleDateString();
+            if (dismissed !== todayStr) setShowDeliverAlert(true);
+        }
+    }, [readyToDeliverCount]);
+    const dismissDeliverAlert = () => {
+        localStorage.setItem("deliver_alert_dismissed", new Date().toLocaleDateString());
+        setShowDeliverAlert(false);
+    };
+
     // ── 재단하기 모달 ──
     const [showCutModal, setShowCutModal] = useState(false);
     const [cutItems, setCutItems] = useState<{ id: string; name: string; main_category: string; sub_category: string; color: string; size: string; quantity: number; cutting_qty: number }[]>([]);
@@ -93,7 +109,6 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
         const { data: invData } = await supabase
             .from("inventory")
             .select("id, name, main_category, sub_category, color, size, quantity")
-            .lt("quantity", LOW_STOCK_THRESHOLD)
             .order("quantity", { ascending: true });
 
         const { data: cuttingOrders } = await supabase
@@ -101,17 +116,36 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
             .select("main_category, sub_category, color, size, quantity")
             .eq("stage", "cutting");
 
-        const items = (invData ?? []).map((inv) => {
-            const cuttingQty = (cuttingOrders ?? [])
-                .filter(c =>
-                    c.main_category === inv.main_category &&
-                    (c.sub_category || "").trim().toLowerCase() === (inv.sub_category || "").trim().toLowerCase() &&
-                    (c.color || "").trim().toLowerCase() === (inv.color || "").trim().toLowerCase() &&
-                    (c.size || "").trim().toLowerCase() === (inv.size || "").trim().toLowerCase()
-                )
-                .reduce((sum, c) => sum + (c.quantity ?? 0), 0);
-            return { ...inv, cutting_qty: cuttingQty };
+        // 수량 합산 및 중복 제거 (대소문자 및 공백 무시)
+        const groupedMap = new Map<string, any>();
+
+        (invData ?? []).forEach(inv => {
+            const m = (inv.main_category || "").trim().toLowerCase();
+            const s = (inv.sub_category || "").trim().toLowerCase();
+            const c = (inv.color || "").trim().toLowerCase();
+            const sz = (inv.size || "").trim().toLowerCase();
+            const key = `${m}|${s}|${c}|${sz}`;
+
+            if (groupedMap.has(key)) {
+                groupedMap.get(key)!.quantity += (inv.quantity || 0);
+            } else {
+                groupedMap.set(key, { ...inv });
+            }
         });
+
+        const items = Array.from(groupedMap.values())
+            .filter(inv => inv.quantity < LOW_STOCK_THRESHOLD) // 합산 수량이 여전히 임계값 미만인 것만
+            .map((inv) => {
+                const cuttingQty = (cuttingOrders ?? [])
+                    .filter(c =>
+                        (c.main_category || "").trim().toLowerCase() === (inv.main_category || "").trim().toLowerCase() &&
+                        (c.sub_category || "").trim().toLowerCase() === (inv.sub_category || "").trim().toLowerCase() &&
+                        (c.color || "").trim().toLowerCase() === (inv.color || "").trim().toLowerCase() &&
+                        (c.size || "").trim().toLowerCase() === (inv.size || "").trim().toLowerCase()
+                    )
+                    .reduce((sum, c) => sum + (c.quantity ?? 0), 0);
+                return { ...inv, cutting_qty: cuttingQty };
+            });
 
         items.sort((a, b) => (a.quantity + a.cutting_qty) - (b.quantity + b.cutting_qty));
         setCutItems(items);
@@ -382,6 +416,69 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
                 </div>
             )}
 
+            {/* 납품 가능 주문 알림 카드 */}
+            {showDeliverAlert && readyToDeliverCount > 0 && (
+                <div style={{
+                    backgroundColor: "rgba(5, 150, 105, 0.1)",
+                    border: "1px solid #059669",
+                    borderRadius: "12px",
+                    padding: "16px 20px",
+                    marginBottom: "24px",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
+                    gap: "16px",
+                    flexWrap: "wrap"
+                }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", flex: 1 }}>
+                        <div style={{ fontSize: "24px", flexShrink: 0 }}>📦</div>
+                        <div>
+                            <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 600, color: "#065f46", marginBottom: "4px" }}>
+                                {lang === "ko"
+                                    ? `납품 가능한 주문 ${readyToDeliverCount}건이 있습니다!`
+                                    : `¡Hay ${readyToDeliverCount} pedido(s) listos para entregar!`}
+                            </h3>
+                            <p style={{ margin: 0, fontSize: "13px", color: "#059669" }}>
+                                {lang === "ko" ? "리스트" : "Lista"}: {readyToDeliverOrders.slice(0, 5).map(o =>
+                                    (o.customer_name || "") + (o.order_number ? ` (#${o.order_number})` : "")
+                                ).join(", ")}{readyToDeliverCount > 5 ? ` +${readyToDeliverCount - 5}` : ""}
+                            </p>
+                        </div>
+                    </div>
+                    <div style={{ display: "flex", gap: "12px", alignItems: "center", flexShrink: 0 }}>
+                        <Link
+                            href="/dashboard/orders"
+                            style={{
+                                backgroundColor: "#059669",
+                                color: "white",
+                                padding: "8px 16px",
+                                borderRadius: "6px",
+                                fontSize: "14px",
+                                fontWeight: 500,
+                                textDecoration: "none"
+                            }}
+                        >
+                            {lang === "ko" ? "주문 바로가기 →" : "Ir a Pedidos →"}
+                        </Link>
+                        <button
+                            onClick={dismissDeliverAlert}
+                            style={{
+                                backgroundColor: "transparent",
+                                border: "1px solid rgba(5, 150, 105, 0.3)",
+                                color: "#059669",
+                                padding: "8px 16px",
+                                borderRadius: "6px",
+                                fontSize: "14px",
+                                cursor: "pointer",
+                                fontWeight: 500
+                            }}
+                        >
+                            {lang === "ko" ? "오늘 하루 닫기 ✕" : "Cerrar por hoy ✕"}
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Quick links */}
             <div className={styles.section}>
                 <h2 className={styles.sectionTitle}>
@@ -495,7 +592,7 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
                                                     <div className={styles.cutMeta}>
                                                         {item.sub_category && <span className={styles.cutBadge}>{item.sub_category}</span>}
                                                         {item.color && <span className={styles.cutTag}>🎨 {item.color}</span>}
-                                                        {item.size && <span className={styles.cutTag}>📐 {item.size}</span>}
+                                                        {item.size && <span className={styles.cutTag}>{lang === "ko" ? "사이즈" : "Talla"} {item.size}</span>}
                                                     </div>
                                                 </div>
                                                 <div className={styles.cutQtyGroup}>
@@ -619,7 +716,7 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
                                                         {order.main_category && !order.sub_category && <span className={styles.cutBadge}>{order.main_category}</span>}
                                                         {order.sub_category && <span className={styles.cutBadge}>{order.sub_category}</span>}
                                                         {order.color && <span className={styles.cutTag}>🎨 {order.color}</span>}
-                                                        {order.size && <span className={styles.cutTag}>📐 {order.size}</span>}
+                                                        {order.size && <span className={styles.cutTag}>{lang === "ko" ? "사이즈" : "Talla"} {order.size}</span>}
                                                     </div>
                                                 </div>
                                                 {isSent ? (

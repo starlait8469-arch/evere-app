@@ -35,24 +35,14 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url);
     const dateParam = url.searchParams.get("date");
 
-    // Default to today if no date provided
     let startOfDay, endOfDay;
     if (dateParam) {
-        const d = new Date(dateParam);
-        d.setHours(0, 0, 0, 0);
-        startOfDay = d.toISOString();
-
-        const dEnd = new Date(dateParam);
-        dEnd.setHours(23, 59, 59, 999);
-        endOfDay = dEnd.toISOString();
+        startOfDay = new Date(`${dateParam}T00:00:00-03:00`).toISOString();
+        endOfDay = new Date(`${dateParam}T23:59:59.999-03:00`).toISOString();
     } else {
-        const d = new Date();
-        d.setHours(0, 0, 0, 0);
-        startOfDay = d.toISOString();
-
-        const dEnd = new Date();
-        dEnd.setHours(23, 59, 59, 999);
-        endOfDay = dEnd.toISOString();
+        const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        startOfDay = new Date(`${todayStr}T00:00:00-03:00`).toISOString();
+        endOfDay = new Date(`${todayStr}T23:59:59.999-03:00`).toISOString();
     }
 
     // 3. 판매 장부 조회 (선택된 날짜 기준)
