@@ -1,1 +1,0 @@
-store_orders\nfabric_payments\nproduction_orders\nspecial_orders\nfabric_deliveries\nprofiles\nfabric_suppliers\ninventory\nstore_order_items\ncategories\nsales_history\nsewing_factories\nfabric_inventory\nstore_deliveries_history
