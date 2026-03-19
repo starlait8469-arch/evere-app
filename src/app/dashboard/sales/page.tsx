@@ -53,7 +53,7 @@ export default function SalesPage() {
 
         if (catRes.data) {
             const prices: Record<string, number> = {};
-            catRes.data.forEach(c => prices[c.name] = c.price || 0);
+            catRes.data.forEach(c => prices[(c.name || "").trim().toLowerCase()] = c.price || 0);
             setCategoryPrices(prices);
         }
 
@@ -171,7 +171,7 @@ export default function SalesPage() {
         }
 
         // 2. 판매 장부에 기록
-        const currentPrice = categoryPrices[item.sub_category] || 0;
+        const currentPrice = categoryPrices[(item.sub_category || "").trim().toLowerCase()] || 0;
         const { error: historyError } = await supabase
             .from("sales_history")
             .insert([{

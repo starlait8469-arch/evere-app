@@ -13,8 +13,18 @@ async function checkAdmin() {
     const serverSupabase = await createServerClient();
     const { data: { user } } = await serverSupabase.auth.getUser();
     if (!user) return null;
-    if (user.user_metadata?.role !== "admin") return null;
-    return user;
+
+    // JWT user_metadata 먼저 확인 (빠름), 없으면 profiles 테이블에서 직접 확인 (보안 강화 후 fallback)
+    if (user.user_metadata?.role === "admin") return user;
+
+    const { data: profile } = await adminClient()
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+    if (profile?.role === "admin") return user;
+    return null;
 }
 
 // GET: 전표 목록 조회

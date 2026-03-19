@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
     const { data: catData } = await supabase.from("categories").select("name, price");
     const prices: Record<string, number> = {};
     if (catData) {
-        catData.forEach(c => prices[(c.name || "").toUpperCase()] = c.price || 0);
+        catData.forEach(c => prices[(c.name || "").trim().toLowerCase()] = c.price || 0);
     }
 
     const orderItems = items.map((item: {
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
         ...item,
         order_id: order.id,
         delivered_qty: 0,
-        unit_price: prices[(item.sub_category || item.main_category || "").toUpperCase()] || 0
+        unit_price: prices[(item.sub_category || item.main_category || "").trim().toLowerCase()] || 0
     }));
 
     const { error: itemErr } = await supabase.from("store_order_items").insert(orderItems);
@@ -234,6 +234,13 @@ export async function PATCH(req: NextRequest) {
             }
         }
 
+        // 카테고리 단가 조회 (신규 아이템용)
+        const { data: catData } = await supabase.from("categories").select("name, price");
+        const prices: Record<string, number> = {};
+        if (catData) {
+            catData.forEach(c => prices[(c.name || "").trim().toLowerCase()] = c.price || 0);
+        }
+
         // 2. 기존 아이템 수량 업데이트 or 신규 아이템 추가
         for (const item of newItems) {
             if (item.id) {
@@ -253,6 +260,7 @@ export async function PATCH(req: NextRequest) {
                     .eq("id", item.id);
             } else {
                 // 신규 아이템 추가
+                const uPrice = prices[(item.sub_category || item.main_category || "").trim().toLowerCase()] || 0;
                 await supabase.from("store_order_items").insert([{
                     order_id: orderId,
                     main_category: item.main_category,
@@ -261,7 +269,7 @@ export async function PATCH(req: NextRequest) {
                     size: item.size || "",
                     quantity: item.quantity,
                     delivered_qty: 0,
-                    unit_price: 0,
+                    unit_price: uPrice,
                 }]);
             }
         }

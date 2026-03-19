@@ -133,8 +133,10 @@ export default function ProductionPage() {
     const fetchSlips = async () => {
         setSlipsLoading(true);
         try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const freshToken = session?.access_token || "";
             const res = await fetch("/api/production-slips", {
-                headers: { Authorization: `Bearer ${token}` },
+                headers: { Authorization: `Bearer ${freshToken}` },
             });
             const data = await res.json();
             setSlips(Array.isArray(data) ? data : []);
@@ -306,14 +308,16 @@ export default function ProductionPage() {
                     .eq("id", order.id);
             }
         } else if (nextStage === "returned") {
-            await supabase.from("production_orders")
+            const { error } = await supabase.from("production_orders")
                 .update({ stage: "returned", quantity: realQty, sewing_returned_qty: realQty, sewing_returned_at: new Date().toISOString() })
                 .eq("id", order.id);
+            if (error) alert(lang === "ko" ? `오류: ${error.message}` : `Error: ${error.message}`);
         } else if (nextStage === "finishing") {
             const now = new Date().toISOString();
-            await supabase.from("production_orders")
+            const { error } = await supabase.from("production_orders")
                 .update({ stage: "finishing", finishing_sent_at: now })
                 .eq("id", order.id);
+            if (error) alert(lang === "ko" ? `오류: ${error.message}` : `Error: ${error.message}`);
             const date = new Date().toLocaleDateString("es-AR");
             setPlanchaSlip({
                 factoryName: "Plancha",
@@ -321,9 +325,10 @@ export default function ProductionPage() {
                 orders: [{ ...order, quantity: realQty }],
             });
         } else {
-            await supabase.from("production_orders")
+            const { error } = await supabase.from("production_orders")
                 .update({ stage: nextStage, quantity: realQty })
                 .eq("id", order.id);
+            if (error) alert(lang === "ko" ? `오류: ${error.message}` : `Error: ${error.message}`);
         }
         fetchOrders();
     };
@@ -390,9 +395,14 @@ export default function ProductionPage() {
         if (!planchaModal) return;
         const now = new Date().toISOString();
         for (const item of planchaModal) {
-            await supabase.from("production_orders")
-                .update({ stage: "finishing", quantity: item.qty, sewing_returned_qty: item.qty, finishing_sent_at: now })
+            const { error } = await supabase.from("production_orders")
+                // sewing_returned_qty는 이미 'returned' 단계에서 정확히 설정됨 - 덮어쓰지 않음
+                .update({ stage: "finishing", quantity: item.qty, finishing_sent_at: now })
                 .eq("id", item.order.id);
+            if (error) {
+                alert(lang === "ko" ? `오류: ${error.message}` : `Error: ${error.message}`);
+                return;
+            }
         }
         const date = new Date().toLocaleDateString("es-AR");
         const slip = {
@@ -402,9 +412,11 @@ export default function ProductionPage() {
         };
         setPlanchaSlip(slip);
         // 전표 저장
+        const { data: { session } } = await supabase.auth.getSession();
+        const freshToken = session?.access_token || "";
         fetch("/api/production-slips", {
             method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${freshToken}` },
             body: JSON.stringify({ slip_type: "plancha", factory_name: null, slip_date: date, orders: slip.orders }),
         }).catch(console.error);
         setPlanchaModal(null);
@@ -619,10 +631,14 @@ export default function ProductionPage() {
         const now = new Date().toISOString();
 
         for (const id of ids) {
-            await supabase
+            const { error } = await supabase
                 .from("production_orders")
                 .update({ stage: "sewing", factory_id: selectedFactory, sewing_sent_at: now })
                 .eq("id", id);
+            if (error) {
+                alert(lang === "ko" ? `오류: ${error.message}` : `Error: ${error.message}`);
+                break; // 한 번이라도 실패하면 중단 (일관성 유지 위해)
+            }
         }
         setFactoryModal(null);
         setSelectedIds(new Set());
@@ -636,10 +652,12 @@ export default function ProductionPage() {
                 orders: dispatchOrders,
             };
             setDispatchSlip(slip);
-            // 전표 저장
+            // 전표 저장: 신선한 토큰 사용
+            const { data: { session } } = await supabase.auth.getSession();
+            const freshToken = session?.access_token || "";
             fetch("/api/production-slips", {
                 method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${freshToken}` },
                 body: JSON.stringify({ slip_type: "sewing", factory_name: factoryObj.name, slip_date: date, orders: dispatchOrders }),
             }).catch(console.error);
         }

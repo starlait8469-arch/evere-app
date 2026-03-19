@@ -59,6 +59,11 @@ export default function InventoryPage() {
     const [editCatName, setEditCatName] = useState("");
     const [editCatPrice, setEditCatPrice] = useState("0");
 
+    const [activeCatOptionsId, setActiveCatOptionsId] = useState<string | null>(null);
+    const [optionColors, setOptionColors] = useState("");
+    const [optionSizes, setOptionSizes] = useState("");
+    const [optionLoading, setOptionLoading] = useState(false);
+
     const fetchSubCategories = useCallback(async () => {
         const { data } = await supabase.from("categories").select("*").order("name");
         setSubCategories(data ?? []);
@@ -280,6 +285,45 @@ export default function InventoryPage() {
         fetchSubCategories();
     };
 
+    const handleGenerateOptions = async (cat: SubCategory) => {
+        if (!optionColors.trim() && !optionSizes.trim()) return;
+        setOptionLoading(true);
+
+        const colors = optionColors.split(",").map(c => c.trim()).filter(Boolean);
+        const sizes = optionSizes.split(",").map(s => s.trim()).filter(Boolean);
+
+        const finalColors = colors.length > 0 ? colors : [""];
+        const finalSizes = sizes.length > 0 ? sizes : [""];
+
+        const newItems: any[] = [];
+        for (const c of finalColors) {
+            for (const s of finalSizes) {
+                newItems.push({
+                    name: cat.name.toUpperCase(),
+                    main_category: cat.main_category,
+                    sub_category: cat.name,
+                    color: c,
+                    size: s,
+                    quantity: 0
+                });
+            }
+        }
+
+        if (newItems.length > 0) {
+            const { error } = await supabase.from("inventory").insert(newItems);
+            if (error) {
+                alert(lang === "ko" ? "옵션 생성 실패: " + error.message : "Error al generar: " + error.message);
+            } else {
+                alert(lang === "ko" ? `${newItems.length}개의 항목이 일괄 생성되었습니다.` : `Se generaron ${newItems.length} artículos.`);
+                setActiveCatOptionsId(null);
+                setOptionColors("");
+                setOptionSizes("");
+                fetchItems();
+            }
+        }
+        setOptionLoading(false);
+    };
+
     return (
         <div className={styles.page}>
             {/* Header */}
@@ -343,46 +387,73 @@ export default function InventoryPage() {
                                     <div className={styles.catEmpty}>{t("서브 카테고리 없음", "Sin subcategorías")}</div>
                                 ) : (
                                     subCategories.filter((c) => c.main_category === mc).map((cat) => (
-                                        <div key={cat.id} className={styles.catItem}>
-                                            {editCatId === cat.id ? (
-                                                <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flex: 1 }}>
-                                                    <input
-                                                        type="text"
-                                                        className={styles.catInput}
-                                                        style={{ flex: 1, padding: "4px" }}
-                                                        value={editCatName}
-                                                        onChange={(e) => setEditCatName(e.target.value)}
-                                                    />
-                                                    <input
-                                                        type="number"
-                                                        className={styles.catInput}
-                                                        style={{ width: "80px", padding: "4px" }}
-                                                        value={editCatPrice}
-                                                        onChange={(e) => setEditCatPrice(e.target.value)}
-                                                    />
-                                                    <button className={styles.confirmYes} disabled={catLoading} onClick={() => handleUpdateSubCat(cat.id)}>
-                                                        {t("저장", "Guardar")}
-                                                    </button>
-                                                    <button className={styles.confirmNo} onClick={() => setEditCatId(null)}>
-                                                        {t("취소", "Cancelar")}
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <div style={{ flex: 1, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => { setEditCatId(cat.id); setEditCatName(cat.name); setEditCatPrice(String(cat.price || 0)); }}>
-                                                    <span>{cat.name}</span>
-                                                    <span style={{ fontSize: "14px", color: "#666", marginRight: "10px" }}>
-                                                        ${(cat.price || 0).toLocaleString()} ✏️
-                                                    </span>
-                                                </div>
-                                            )}
+                                        <div key={cat.id} style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: "8px" }}>
+                                            <div className={styles.catItem}>
+                                                {editCatId === cat.id ? (
+                                                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flex: 1 }}>
+                                                        <input
+                                                            type="text"
+                                                            className={styles.catInput}
+                                                            style={{ flex: 1, padding: "4px" }}
+                                                            value={editCatName}
+                                                            onChange={(e) => setEditCatName(e.target.value)}
+                                                        />
+                                                        <input
+                                                            type="number"
+                                                            className={styles.catInput}
+                                                            style={{ width: "80px", padding: "4px" }}
+                                                            value={editCatPrice}
+                                                            onChange={(e) => setEditCatPrice(e.target.value)}
+                                                        />
+                                                        <button className={styles.confirmYes} disabled={catLoading} onClick={() => handleUpdateSubCat(cat.id)}>
+                                                            {t("저장", "Guardar")}
+                                                        </button>
+                                                        <button className={styles.confirmNo} onClick={() => setEditCatId(null)}>
+                                                            {t("취소", "Cancelar")}
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div style={{ flex: 1, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => { setEditCatId(cat.id); setEditCatName(cat.name); setEditCatPrice(String(cat.price || 0)); }}>
+                                                        <span>{cat.name}</span>
+                                                        <span style={{ fontSize: "14px", color: "#666", marginRight: "10px" }}>
+                                                            ${(cat.price || 0).toLocaleString()} ✏️
+                                                        </span>
+                                                    </div>
+                                                )}
 
-                                            {deleteCatConfirm === cat.id ? (
-                                                <div className={styles.confirmRow}>
-                                                    <button className={styles.confirmYes} onClick={() => handleDeleteSubCat(cat.id)}>{t("삭제", "Sí")}</button>
-                                                    <button className={styles.confirmNo} onClick={() => setDeleteCatConfirm(null)}>{t("취소", "No")}</button>
+                                                {deleteCatConfirm === cat.id ? (
+                                                    <div className={styles.confirmRow}>
+                                                        <button className={styles.confirmYes} onClick={() => handleDeleteSubCat(cat.id)}>{t("삭제", "Sí")}</button>
+                                                        <button className={styles.confirmNo} onClick={() => setDeleteCatConfirm(null)}>{t("취소", "No")}</button>
+                                                    </div>
+                                                ) : (
+                                                    <div style={{ display: "flex", gap: "6px" }}>
+                                                        <button style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: "14px", padding: "0 4px" }} title={t("옵션 추가", "Añadir opciones")} onClick={() => {
+                                                            setActiveCatOptionsId(activeCatOptionsId === cat.id ? null : cat.id);
+                                                            setOptionColors(""); setOptionSizes("");
+                                                        }}>➕</button>
+                                                        <button className={styles.catDeleteBtn} onClick={() => setDeleteCatConfirm(cat.id)}>✕</button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {activeCatOptionsId === cat.id && (
+                                                <div style={{ padding: "12px", background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "6px", fontSize: "14px", marginTop: "2px" }}>
+                                                    <h4 style={{ margin: "0 0 8px 0", fontSize: "13px", color: "#374151" }}>{t("옵션 일괄 생성", "Generar opciones en lote")}</h4>
+                                                    <div style={{ marginBottom: "10px" }}>
+                                                        <label style={{ display: "block", marginBottom: "4px", color: "#6b7280", fontSize: "12px" }}>{t("색상 (쉼표로 구분)", "Colores (separados por coma)")}</label>
+                                                        <input className={styles.catInput} value={optionColors} onChange={e => setOptionColors(e.target.value)} placeholder="Blanco, Negro, Azul" style={{ width: "100%", padding: "6px", boxSizing: "border-box" }} />
+                                                    </div>
+                                                    <div style={{ marginBottom: "10px" }}>
+                                                        <label style={{ display: "block", marginBottom: "4px", color: "#6b7280", fontSize: "12px" }}>{t("사이즈 (쉼표로 구분)", "Tallas (separadas por coma)")}</label>
+                                                        <input className={styles.catInput} value={optionSizes} onChange={e => setOptionSizes(e.target.value)} placeholder="S, M, L, XL" style={{ width: "100%", padding: "6px", boxSizing: "border-box" }} />
+                                                    </div>
+                                                    <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                                                        <button className={styles.confirmNo} onClick={() => setActiveCatOptionsId(null)}>{t("취소", "Cancelar")}</button>
+                                                        <button className={styles.confirmYes} disabled={optionLoading} onClick={() => handleGenerateOptions(cat)}>
+                                                            {optionLoading ? "..." : t("생성", "Generar")}
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                            ) : (
-                                                <button className={styles.catDeleteBtn} onClick={() => setDeleteCatConfirm(cat.id)}>✕</button>
                                             )}
                                         </div>
                                     ))

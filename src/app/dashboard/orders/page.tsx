@@ -312,6 +312,23 @@ export default function OrdersPage() {
 
     // ─── Print ───
     const printOrder = (data: NonNullable<typeof slipData>) => {
+        const summaryMap = new Map<string, number>();
+        data.items.forEach(item => {
+            const key = `${item.sub_category || item.main_category || "—"} / ${item.color || "—"}`;
+            summaryMap.set(key, (summaryMap.get(key) || 0) + parseInt(String(item.quantity), 10));
+        });
+        
+        const summaryRowsHtml = Array.from(summaryMap.entries()).map(([key, qty]) => `
+            <tr><td style="padding:4px 0; border:none; border-bottom:1px dashed #ccc;">${key}</td><td style="padding:4px 0; border:none; border-bottom:1px dashed #ccc; text-align:right; font-weight:700;">${qty}</td></tr>
+        `).join("");
+        
+        const summaryHtml = `
+            <div style="margin-bottom: 24px; padding: 12px 16px; background: #fdfdfd; border: 1px solid #ddd; border-radius: 4px;">
+                <h3 style="font-size: 14px; margin-bottom: 8px; border-bottom: 2px solid #111; padding-bottom: 4px;">Resumen por Artículo y Color</h3>
+                <table style="width:100%; border:none; margin:0; font-size:13px;"><tbody>${summaryRowsHtml}</tbody></table>
+            </div>
+        `;
+
         const rowsHtml = data.items.map(item => `
             <tr>
                 <td>${item.main_category}</td>
@@ -353,6 +370,7 @@ export default function OrdersPage() {
       <span>Total: <strong>${total}</strong> uds.</span>
     </div>
   </div>
+  ${summaryHtml}
   <table>
     <thead><tr><th>Categoría</th><th>Subcategoría</th><th>Color</th><th>Talla</th><th style="text-align:center;">Cantidad</th><th style="width:36px;text-align:center;">✓</th></tr></thead>
     <tbody>${rowsHtml}</tbody>
@@ -471,6 +489,23 @@ export default function OrdersPage() {
         invNumber: string,
         note: string
     ) => {
+        const summaryMap = new Map<string, number>();
+        items.forEach(item => {
+            const key = `${item.name || "—"} / ${item.color || "—"}`;
+            summaryMap.set(key, (summaryMap.get(key) || 0) + Number(item.quantity));
+        });
+        
+        const summaryRowsHtml = Array.from(summaryMap.entries()).map(([key, qty]) => `
+            <tr><td style="padding:4px 0; border:none; border-bottom:1px dashed #ccc;">${key}</td><td style="padding:4px 0; border:none; border-bottom:1px dashed #ccc; text-align:right; font-weight:700;">${qty}</td></tr>
+        `).join("");
+        
+        const summaryHtml = `
+            <div style="margin-bottom: 24px; padding: 12px 16px; background: #fdfdfd; border: 1px solid #ddd; border-radius: 4px;">
+                <h3 style="font-size: 14px; margin-bottom: 8px; border-bottom: 2px solid #111; padding-bottom: 4px;">Resumen por Artículo y Color</h3>
+                <table style="width:100%; border:none; margin:0; font-size:13px;"><tbody>${summaryRowsHtml}</tbody></table>
+            </div>
+        `;
+
         const rowsHtml = items.map(item => `
             <tr>
                 <td>${item.name || "—"}</td>
@@ -514,6 +549,7 @@ export default function OrdersPage() {
     </div>
   </div>
   ${note ? `<div class="note-box">📝 ${note}</div>` : ""}
+  ${summaryHtml}
   <table>
     <thead><tr><th>Artículo</th><th>Color</th><th>Talla</th><th style="text-align:center;">Cant.</th><th style="text-align:right;">Precio Un.</th><th style="text-align:right;">Subtotal</th></tr></thead>
     <tbody>${rowsHtml}</tbody>
@@ -1292,6 +1328,17 @@ export default function OrdersPage() {
             {/* ─── 계산서 작성 모달 ─── */}
             {invoiceModalOrder && (() => {
                 const totalAmt = invoiceItems.reduce((s, i) => s + Number(i.quantity) * Number(i.price), 0);
+                const aggregatedItems = (() => {
+                    const map = new Map<string, { name: string; color: string; quantity: number }>();
+                    invoiceModalOrder.store_order_items.forEach(i => {
+                        const itemName = i.sub_category || i.main_category || "—";
+                        const color = i.color || "—";
+                        const key = `${itemName} / ${color}`;
+                        if (!map.has(key)) map.set(key, { name: itemName, color, quantity: 0 });
+                        map.get(key)!.quantity += i.quantity;
+                    });
+                    return Array.from(map.values());
+                })();
                 return (
                     <div className={styles.modalOverlay} onClick={() => !invoiceSaving && setInvoiceModalOrder(null)}>
                         <div className={styles.deliveryModal} style={{ maxWidth: 780, width: "95vw" }} onClick={e => e.stopPropagation()}>
@@ -1343,6 +1390,20 @@ export default function OrdersPage() {
                                         placeholder={lang === "ko" ? "선택사항" : "Opcional"}
                                         style={{ width: "100%", padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 13 }}
                                     />
+                                </div>
+                            </div>
+
+                            {/* Order Summary Memo */}
+                            <div style={{ padding: "12px 20px", background: "rgba(99,102,241,0.08)", borderBottom: "1px solid var(--border)", fontSize: 13, color: "var(--text)" }}>
+                                <div style={{ fontWeight: 600, marginBottom: 8, color: "#4f46e5", display: "flex", alignItems: "center", gap: 6 }}>
+                                    💡 <span>{lang === "ko" ? "주문 품목 요약 (계산서 입력 참고용)" : "Resumen del pedido (referencia)"}</span>
+                                </div>
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                                    {aggregatedItems.map((agg, idx) => (
+                                        <span key={idx} style={{ background: "var(--surface)", padding: "4px 10px", borderRadius: 6, border: "1px solid rgba(99,102,241,0.2)", fontSize: 12, boxShadow: "0 1px 2px rgba(0,0,0,0.02)" }}>
+                                            {agg.name} <span style={{ color: "var(--text-muted)", margin: "0 4px" }}>/</span> {agg.color} <strong style={{ marginLeft: 6, color: "var(--text)" }}>{agg.quantity}</strong><span style={{ color: "var(--text-muted)", marginLeft: 2 }}>{lang === "ko" ? "장" : " uds."}</span>
+                                        </span>
+                                    ))}
                                 </div>
                             </div>
 
