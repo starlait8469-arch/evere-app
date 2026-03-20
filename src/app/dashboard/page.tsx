@@ -70,7 +70,15 @@ export default async function DashboardPage() {
 
     const sewingOrders = sewingOrdersData || [];
 
-    // sewing 품목 각각에 대해 잔여 재고 매핑 (대소문자, 공백 무시)
+    // 현재 Plancha(finishing) 단계에 있는 주문들 조회
+    const { data: finishingOrdersData } = await supabase
+        .from("production_orders")
+        .select("main_category, sub_category, color, size, quantity")
+        .eq("stage", "finishing");
+
+    const finishingOrders = finishingOrdersData || [];
+
+    // sewing 품목 각각에 대해 잔여 재고 및 진행 중인 수량 파악 (대소문자, 공백 무시)
     const needsPlanchaItems = sewingOrders.map(order => {
         const orderMainLower = (order.main_category || "").trim().toLowerCase();
         const orderSubLower = (order.sub_category || "").trim().toLowerCase();
@@ -83,12 +91,25 @@ export default async function DashboardPage() {
             (inv.color || "").trim().toLowerCase() === orderColorLower &&
             (inv.size || "").trim().toLowerCase() === orderSizeLower
         );
+
+        const finishingQty = finishingOrders
+            .filter(f =>
+                (f.main_category || "").trim().toLowerCase() === orderMainLower &&
+                (f.sub_category || "").trim().toLowerCase() === orderSubLower &&
+                (f.color || "").trim().toLowerCase() === orderColorLower &&
+                (f.size || "").trim().toLowerCase() === orderSizeLower
+            )
+            .reduce((sum, f) => sum + (f.quantity || 0), 0);
+
+        const currentStock = stockItem ? stockItem.quantity : 0;
+
         return {
             ...order,
-            stock_quantity: stockItem ? stockItem.quantity : 0
+            stock_quantity: currentStock,
+            projected_stock: currentStock + finishingQty
         };
     })
-        .filter(item => item.stock_quantity < LOW_STOCK_THRESHOLD)
+        .filter(item => item.projected_stock < LOW_STOCK_THRESHOLD)
         .sort((a, b) => {
             // 재고 오름차순 정렬 (적은 것 우선)
             if (a.stock_quantity !== b.stock_quantity) {
