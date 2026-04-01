@@ -41,8 +41,8 @@ export default function InventoryPage() {
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
     // 수량 입고 입력 상태: { id, value }
     const [qtyInput, setQtyInput] = useState<{ id: string; value: string } | null>(null);
-    // 되돌리기: 마지막 변경 이전 수량
-    const [prevQty, setPrevQty] = useState<{ id: string; qty: number } | null>(null);
+    // 되돌리기: 마지막 변경 증분(delta) 저장
+    const [prevQty, setPrevQty] = useState<{ id: string; delta: number } | null>(null);
     const [rollbackConfirm, setRollbackConfirm] = useState<string | null>(null);
 
     // 현재 유저 역할
@@ -224,19 +224,30 @@ export default function InventoryPage() {
         if (!item || !qtyInput) return;
         const delta = parseInt(qtyInput.value, 10);
         if (isNaN(delta) || delta === 0) { setQtyInput(null); return; }
-        const oldQty = item.quantity;
-        const newQty = Math.max(0, item.quantity + delta);
-        await supabase.from("inventory").update({ quantity: newQty }).eq("id", id);
-        setItems((prev) => prev.map((i) => i.id === id ? { ...i, quantity: newQty } : i));
-        setPrevQty({ id, qty: oldQty }); // 이전 수량 저장
+
+        const { data: newQty, error } = await supabase.rpc('increment_inventory', { row_id: id, delta });
+        if (error) {
+            console.error("Update error:", error);
+            alert("저장 실패: " + error.message);
+            return;
+        }
+
+        setItems((prev) => prev.map((i) => i.id === id ? { ...i, quantity: newQty as number } : i));
+        setPrevQty({ id, delta }); // 방금 추가한 delta 저장
         setQtyInput(null);
     };
 
     // 되돌리기 확인
     const handleRollback = async (id: string) => {
         if (!prevQty || prevQty.id !== id) return;
-        await supabase.from("inventory").update({ quantity: prevQty.qty }).eq("id", id);
-        setItems((prev) => prev.map((i) => i.id === id ? { ...i, quantity: prevQty.qty } : i));
+
+        const { data: newQty, error } = await supabase.rpc('increment_inventory', { row_id: id, delta: -prevQty.delta });
+        if (error) {
+            console.error("Rollback error:", error);
+            return;
+        }
+
+        setItems((prev) => prev.map((i) => i.id === id ? { ...i, quantity: newQty as number } : i));
         setPrevQty(null);
         setRollbackConfirm(null);
     };
@@ -590,7 +601,7 @@ export default function InventoryPage() {
                                                 {prevQty?.id === item.id && (
                                                     rollbackConfirm === item.id ? (
                                                         <>
-                                                            <span className={styles.rollbackMsg}>{t(`이전 (${prevQty.qty}개)로?`, `¿Volver a ${prevQty.qty}?`)}</span>
+                                                            <span className={styles.rollbackMsg}>{t(`최근 취소?`, `¿Deshacer?`)}</span>
                                                             <button className={styles.rollbackYes} onClick={() => handleRollback(item.id)}>{t("확인", "Sí")}</button>
                                                             <button className={styles.qtyCancelBtn} onClick={() => setRollbackConfirm(null)}>{t("취소", "No")}</button>
                                                         </>
@@ -662,8 +673,7 @@ export default function InventoryPage() {
                                     {prevQty?.id === item.id && (
                                         rollbackConfirm === item.id ? (
                                             <div className={styles.rollbackDialogLg}>
-                                                <span className={styles.rollbackMsgLg}>{t(`이전 값(${prevQty.qty}개)으로
-되돌리갬습니까?`, `¿Volver a ${prevQty.qty}?`)}</span>
+                                                <span className={styles.rollbackMsgLg}>{t(`추가된 ${prevQty.delta}개를\n취소하시겠습니까?`, `¿Cancelar adición de ${prevQty.delta}?`)}</span>
                                                 <div className={styles.rollbackDialogBtns}>
                                                     <button className={styles.rollbackYesLg} onClick={() => handleRollback(item.id)}>{t("확인", "Sí")}</button>
                                                     <button className={styles.qtyCancelBtnLg} onClick={() => setRollbackConfirm(null)}>{t("취소", "No")}</button>

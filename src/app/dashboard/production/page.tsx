@@ -289,9 +289,7 @@ export default function ProductionPage() {
 
                 if (existing) {
                     await supabase
-                        .from("inventory")
-                        .update({ quantity: existing.quantity + realQty })
-                        .eq("id", existing.id);
+                        .rpc('increment_inventory', { row_id: existing.id, delta: realQty });
                 } else {
                     await supabase.from("inventory").insert([{
                         name: (order.sub_category || order.main_category).toUpperCase(),
@@ -360,8 +358,7 @@ export default function ProductionPage() {
                 .maybeSingle();
 
             if (existing) {
-                const newQty = Math.max(0, existing.quantity - order.quantity);
-                await supabase.from("inventory").update({ quantity: newQty }).eq("id", existing.id);
+                await supabase.rpc('increment_inventory', { row_id: existing.id, delta: -order.quantity });
             }
         }
 
@@ -1148,7 +1145,13 @@ export default function ProductionPage() {
                             </div>
                             <div className={styles.editGroup}>
                                 <label>{lang === "ko" ? "색상" : "Color"}</label>
-                                <input type="text" value={editForm.color} onChange={e => setEditForm(f => ({ ...f, color: e.target.value }))} />
+                                <select value={editForm.color} onChange={e => setEditForm(f => ({ ...f, color: e.target.value }))}>
+                                    <option value="">{lang === "ko" ? "선택" : "Seleccionar"}</option>
+                                    <option value="blanco">Blanco</option>
+                                    <option value="negro">Negro</option>
+                                    <option value="azul">Azul</option>
+                                    <option value="gris">Gris</option>
+                                </select>
                             </div>
                             <div className={styles.editGroup}>
                                 <label>{lang === "ko" ? "사이즈" : "Talla"}</label>
@@ -1322,13 +1325,17 @@ export default function ProductionPage() {
                     {/* 공통 색상 */}
                     <div className={styles.colorRow}>
                         <label className={styles.colorLabel}>{lang === "ko" ? "🎨 공통 색상 (Color):" : "🎨 Color (común):"}</label>
-                        <input
+                        <select
                             className={styles.colorInput}
-                            type="text"
-                            placeholder="ej. Negro, Azul..."
                             value={batchColor}
                             onChange={e => setBatchColor(e.target.value)}
-                        />
+                        >
+                            <option value="">{lang === "ko" ? "선택" : "Seleccionar"}</option>
+                            <option value="blanco">Blanco</option>
+                            <option value="negro">Negro</option>
+                            <option value="azul">Azul</option>
+                            <option value="gris">Gris</option>
+                        </select>
                     </div>
 
                     {/* 행 목록 */}

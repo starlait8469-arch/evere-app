@@ -157,13 +157,9 @@ export default function SalesPage() {
         const item = items.find(i => i.id === confirmSale.id);
         if (!item) return;
 
-        const newQty = item.quantity - confirmSale.qty;
-
-        // 1. 재고 차감 업데이트
-        const { error: invError } = await supabase
-            .from("inventory")
-            .update({ quantity: newQty })
-            .eq("id", item.id);
+        // 1. 재고 차감 업데이트 (동시성 처리: RPC 사용)
+        const { data: updatedQty, error: invError } = await supabase
+            .rpc('increment_inventory', { row_id: item.id, delta: -confirmSale.qty });
 
         if (invError) {
             alert("Error updating inventory");
@@ -189,7 +185,8 @@ export default function SalesPage() {
         }
 
         // 로컬 상태 즉시 업데이트
-        setItems(prev => prev.map(i => i.id === item.id ? { ...i, quantity: newQty } : i).filter(i => i.quantity > 0)); // 재고 0되면 목록에서 제외
+        const finalQty = typeof updatedQty === 'number' ? updatedQty : item.quantity - confirmSale.qty;
+        setItems(prev => prev.map(i => i.id === item.id ? { ...i, quantity: finalQty } : i).filter(i => i.quantity > 0)); // 재고 0되면 목록에서 제외
         setSellInputs(prev => {
             const next = { ...prev };
             delete next[item.id];
