@@ -221,3 +221,273 @@
     margin-bottom: 16px;
     color: var(--text-primary);
 }
+
+/* ─── Tabs ─── */
+.tabs {
+    display: flex;
+    gap: 6px;
+    background: var(--bg-muted);
+    border-radius: 12px;
+    padding: 4px;
+    border: 1px solid var(--border);
+    margin-bottom: 24px;
+    width: fit-content;
+}
+
+.tab {
+    padding: 8px 20px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: 9px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.tab:hover { color: var(--text-primary); }
+
+.tabActive {
+    background: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+}
+
+/* ─── Analytics ─── */
+.analyticsSection {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.analyticsHeader {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 16px;
+    justify-content: space-between;
+}
+
+.analyticsDateRow {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.analyticsDateGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.analyticsDateLabel {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.analyticsDateInput {
+    padding: 8px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 9px;
+    font-size: 13px;
+    background: var(--bg-main);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+
+.analyticsDateInput:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.analyticsDateSep {
+    font-size: 18px;
+    color: var(--text-muted);
+    padding-bottom: 6px;
+}
+
+.analyticsQuickBtns {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.quickBtn {
+    padding: 7px 13px;
+    border: 1.5px solid var(--border);
+    background: var(--bg-main);
+    color: var(--text-secondary);
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.quickBtn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* 카테고리 필터 바 */
+.analyticsCatBar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.analyticsCatBtn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border: 1.5px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    border-radius: 99px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.analyticsCatBtn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.analyticsCatActive {
+    background: var(--primary) !important;
+    color: white !important;
+    border-color: var(--primary) !important;
+}
+
+.badge {
+    font-size: 11px;
+    font-weight: 700;
+    background: rgba(0, 0, 0, 0.12);
+    padding: 1px 7px;
+    border-radius: 99px;
+}
+
+.analyticsCatActive .badge {
+    background: rgba(255, 255, 255, 0.25);
+    color: white;
+}
+
+/* 서브카테고리 테이블 */
+.analyticsDetail {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.analyticsSubHead {
+    display: grid;
+    grid-template-columns: 1fr 110px 70px;
+    gap: 8px;
+    padding: 10px 20px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-muted);
+}
+
+.analyticsSubRow {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+}
+
+.analyticsSubRow:last-child { border-bottom: none; }
+
+.analyticsSubRow:hover { background: var(--bg-muted); }
+
+.analyticsSubRowTop {
+    display: grid;
+    grid-template-columns: 1fr 110px 70px;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.analyticsSubName {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.analyticsSubQty {
+    font-size: 20px;
+    font-weight: 900;
+    color: #059669;
+    text-align: right;
+}
+
+.analyticsSubPct {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-align: right;
+}
+
+/* 프로그레스 바 */
+.analyticsBar {
+    height: 7px;
+    background: var(--bg-muted);
+    border-radius: 99px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.analyticsBarFill {
+    height: 100%;
+    background: linear-gradient(90deg, #6366f1, #8b5cf6);
+    border-radius: 99px;
+    transition: width 0.4s ease;
+}
+
+/* 색상/사이즈 태그 */
+.analyticsColorRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.analyticsColorTag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--bg-muted);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 3px 10px;
+    font-size: 12px;
+}
+
+.analyticsColorKey {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.analyticsColorVal {
+    font-weight: 800;
+    color: var(--text-primary);
+    min-width: 20px;
+    text-align: right;
+}

@@ -34,9 +34,15 @@ export async function GET(req: NextRequest) {
 
     const url = new URL(req.url);
     const dateParam = url.searchParams.get("date");
+    const fromParam = url.searchParams.get("from");
+    const toParam = url.searchParams.get("to");
 
     let startOfDay, endOfDay;
-    if (dateParam) {
+    if (fromParam && toParam) {
+        // 기간 범위 모드
+        startOfDay = new Date(`${fromParam}T00:00:00-03:00`).toISOString();
+        endOfDay = new Date(`${toParam}T23:59:59.999-03:00`).toISOString();
+    } else if (dateParam) {
         startOfDay = new Date(`${dateParam}T00:00:00-03:00`).toISOString();
         endOfDay = new Date(`${dateParam}T23:59:59.999-03:00`).toISOString();
     } else {

@@ -1,0 +1,6 @@
+﻿Fetching categories...
+Category Possible Duplicates (ignoring case/spaces): 0
+Fetching inventory...
+Inventory Possible Duplicates (ignoring case/spaces): 0 groups
+
+Exact Duplicates: 0 groups

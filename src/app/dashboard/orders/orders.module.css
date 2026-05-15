@@ -1017,3 +1017,403 @@
         opacity: 1;
     }
 }
+
+/* ─── Analytics Section ─── */
+.analyticsSection {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.analyticsHeader {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 16px;
+    justify-content: space-between;
+}
+
+.analyticsDateRow {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.analyticsDateGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.analyticsDateLabel {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.analyticsDateInput {
+    padding: 8px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 9px;
+    font-size: 13px;
+    background: var(--bg-main);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+
+.analyticsDateInput:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.analyticsDateSep {
+    font-size: 18px;
+    color: var(--text-muted);
+    padding-bottom: 6px;
+}
+
+.analyticsQuickBtns {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.quickBtn {
+    padding: 7px 13px;
+    border: 1.5px solid var(--border);
+    background: var(--bg-main);
+    color: var(--text-secondary);
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.quickBtn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: rgba(99,102,241,0.06);
+}
+
+/* ─── Category filter bar ─── */
+.analyticsCatBar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.analyticsCatBtn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border: 1.5px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    border-radius: 99px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.analyticsCatBtn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.analyticsCatActive {
+    background: var(--primary) !important;
+    color: white !important;
+    border-color: var(--primary) !important;
+}
+
+.analyticsCatBadge {
+    font-size: 11px;
+    font-weight: 700;
+    background: rgba(255,255,255,0.2);
+    padding: 1px 7px;
+    border-radius: 99px;
+}
+
+.analyticsCatActive .analyticsCatBadge {
+    background: rgba(255,255,255,0.25);
+    color: white;
+}
+
+/* ─── Empty ─── */
+.analyticsEmpty {
+    text-align: center;
+    padding: 60px;
+    color: var(--text-muted);
+    font-size: 15px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+}
+
+/* ─── Grid (전체 뷰) ─── */
+.analyticsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+}
+
+.analyticsCatCard {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    cursor: pointer;
+    transition: all 0.18s;
+}
+
+.analyticsCatCard:hover {
+    border-color: var(--primary);
+    box-shadow: 0 4px 20px rgba(99,102,241,0.12);
+    transform: translateY(-1px);
+}
+
+.analyticsCatCardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.analyticsCatCardName {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.analyticsCatCardTotal {
+    font-size: 22px;
+    font-weight: 900;
+    color: var(--primary);
+    letter-spacing: -0.5px;
+}
+
+.analyticsCatCardPct {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-top: 4px;
+    text-align: right;
+}
+
+.analyticsCatCardHint {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 8px;
+    opacity: 0.7;
+}
+
+/* ─── Total card ─── */
+.analyticsTotalCard {
+    background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(139,92,246,0.1));
+    border: 1.5px solid rgba(99,102,241,0.3);
+    border-radius: 14px;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+}
+
+.analyticsTotalLabel {
+    font-size: 11px;
+    font-weight: 700;
+    color: #6366f1;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.analyticsTotalVal {
+    font-size: 36px;
+    font-weight: 900;
+    color: var(--text-primary);
+    letter-spacing: -1px;
+    line-height: 1;
+}
+
+.analyticsTotalUnit {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+/* ─── Progress bar ─── */
+.analyticsBar {
+    height: 8px;
+    background: var(--bg-muted);
+    border-radius: 99px;
+    overflow: hidden;
+}
+
+.analyticsBarFill {
+    height: 100%;
+    background: linear-gradient(90deg, #6366f1, #8b5cf6);
+    border-radius: 99px;
+    transition: width 0.4s ease;
+}
+
+.analyticsBarFillSub {
+    height: 100%;
+    background: linear-gradient(90deg, #059669, #10b981);
+    border-radius: 99px;
+    transition: width 0.4s ease;
+}
+
+/* ─── Detail view (subcategory) ─── */
+.analyticsDetail {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.analyticsDetailHeader {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-muted);
+    flex-wrap: wrap;
+}
+
+.analyticsBackBtn {
+    padding: 6px 12px;
+    border: 1.5px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+
+.analyticsBackBtn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.analyticsDetailTitle {
+    font-size: 18px;
+    font-weight: 900;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.analyticsDetailTotal {
+    font-size: 14px;
+    font-weight: 700;
+    color: #6366f1;
+    background: rgba(99,102,241,0.08);
+    padding: 4px 12px;
+    border-radius: 99px;
+    border: 1px solid rgba(99,102,241,0.2);
+}
+
+/* ─── Sub table ─── */
+.analyticsSubTable {
+    padding: 12px 0;
+}
+
+.analyticsSubHead {
+    display: grid;
+    grid-template-columns: 1fr 100px 70px;
+    gap: 8px;
+    padding: 8px 20px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+}
+
+.analyticsSubRow {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+}
+
+.analyticsSubRow:last-child {
+    border-bottom: none;
+}
+
+.analyticsSubRow:hover {
+    background: var(--bg-muted);
+}
+
+.analyticsSubRowTop {
+    display: grid;
+    grid-template-columns: 1fr 100px 70px;
+    gap: 8px;
+    align-items: center;
+}
+
+.analyticsSubName {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.analyticsSubQty {
+    font-size: 18px;
+    font-weight: 900;
+    color: #059669;
+    text-align: right;
+}
+
+.analyticsSubPct {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-align: right;
+}
+
+/* ─── Color/size breakdown tags ─── */
+.analyticsColorRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.analyticsColorTag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--bg-muted);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 3px 10px;
+    font-size: 12px;
+}
+
+.analyticsColorKey {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.analyticsColorVal {
+    font-weight: 800;
+    color: var(--text-primary);
+    min-width: 20px;
+    text-align: right;
+}

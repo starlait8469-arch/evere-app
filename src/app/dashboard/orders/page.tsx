@@ -75,7 +75,14 @@ export default function OrdersPage() {
 
     const [isAdmin, setIsAdmin] = useState(false);
     const [token, setToken] = useState("");
-    const [tab, setTab] = useState<"list" | "new">("list");
+    const [tab, setTab] = useState<"list" | "new" | "analytics">("list");
+
+    // ─── Analytics (판매 분석) ───
+    const today = new Date().toISOString().slice(0, 10);
+    const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
+    const [analyticsFrom, setAnalyticsFrom] = useState(firstOfMonth);
+    const [analyticsTo, setAnalyticsTo] = useState(today);
+    const [analyticsMainCat, setAnalyticsMainCat] = useState<string>("all");
 
     // Inventory
     const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -628,6 +635,9 @@ export default function OrdersPage() {
                     <button className={`${styles.tab} ${tab === "new" ? styles.tabActive : ""}`} onClick={() => setTab("new")}>
                         {lang === "ko" ? "＋ 새 주문" : "＋ Nuevo"}
                     </button>
+                    <button className={`${styles.tab} ${tab === "analytics" ? styles.tabActive : ""}`} onClick={() => setTab("analytics")}>
+                        {lang === "ko" ? "📊 판매 분석" : "📊 Análisis"}
+                    </button>
                 </div>
             </div>
 
@@ -852,6 +862,240 @@ export default function OrdersPage() {
                     )}
                 </div>
             )}
+
+            {/* ═══ TAB: 판매 분석 ═══ */}
+            {tab === "analytics" && (() => {
+                // 기간 내 delivered 상태(일부납품 포함)인 주문의 납품 수량으로 집계
+                const fromDate = analyticsFrom ? new Date(analyticsFrom + "T00:00:00") : null;
+                const toDate = analyticsTo ? new Date(analyticsTo + "T23:59:59") : null;
+
+                type SaleEntry = { main: string; sub: string; color: string; size: string; qty: number };
+                const salesEntries: SaleEntry[] = [];
+
+                orders.forEach(order => {
+                    const orderDate = new Date(order.created_at);
+                    if (fromDate && orderDate < fromDate) return;
+                    if (toDate && orderDate > toDate) return;
+                    // 납품된 수량만 집계 (delivered_qty)
+                    order.store_order_items?.forEach(item => {
+                        const dqty = item.delivered_qty ?? 0;
+                        if (dqty <= 0) return;
+                        salesEntries.push({
+                            main: item.main_category || "—",
+                            sub: item.sub_category || "—",
+                            color: item.color || "—",
+                            size: item.size || "—",
+                            qty: dqty,
+                        });
+                    });
+                });
+
+                // 카테고리 목록
+                const allMainCats = [...new Set(salesEntries.map(e => e.main))].sort();
+
+                // 선택된 카테고리 필터
+                const filtered = analyticsMainCat === "all"
+                    ? salesEntries
+                    : salesEntries.filter(e => e.main === analyticsMainCat);
+
+                // 서브카테고리별 집계
+                type SubRow = { sub: string; total: number; colorMap: Map<string, number> };
+                const subMap = new Map<string, SubRow>();
+                filtered.forEach(e => {
+                    if (!subMap.has(e.sub)) subMap.set(e.sub, { sub: e.sub, total: 0, colorMap: new Map() });
+                    const row = subMap.get(e.sub)!;
+                    row.total += e.qty;
+                    const ck = `${e.color} / ${e.size}`;
+                    row.colorMap.set(ck, (row.colorMap.get(ck) || 0) + e.qty);
+                });
+                const subRows = Array.from(subMap.values()).sort((a, b) => b.total - a.total);
+                const grandTotal = subRows.reduce((s, r) => s + r.total, 0);
+
+                // 메인 카테고리별 집계 (all 탭용)
+                type MainRow = { main: string; total: number };
+                const mainMap = new Map<string, MainRow>();
+                salesEntries.forEach(e => {
+                    if (!mainMap.has(e.main)) mainMap.set(e.main, { main: e.main, total: 0 });
+                    mainMap.get(e.main)!.total += e.qty;
+                });
+                const mainRows = Array.from(mainMap.values()).sort((a, b) => b.total - a.total);
+                const mainGrandTotal = mainRows.reduce((s, r) => s + r.total, 0);
+
+                // 빠른 기간 선택
+                const setQuickRange = (days: number) => {
+                    const end = new Date();
+                    const start = new Date();
+                    start.setDate(end.getDate() - days + 1);
+                    setAnalyticsFrom(start.toISOString().slice(0, 10));
+                    setAnalyticsTo(end.toISOString().slice(0, 10));
+                };
+                const setThisMonth = () => {
+                    const now = new Date();
+                    setAnalyticsFrom(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10));
+                    setAnalyticsTo(new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10));
+                };
+                const setLastMonth = () => {
+                    const now = new Date();
+                    setAnalyticsFrom(new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10));
+                    setAnalyticsTo(new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10));
+                };
+
+                return (
+                    <div className={styles.analyticsSection}>
+                        {/* 기간 필터 */}
+                        <div className={styles.analyticsHeader}>
+                            <div className={styles.analyticsDateRow}>
+                                <div className={styles.analyticsDateGroup}>
+                                    <label className={styles.analyticsDateLabel}>
+                                        {lang === "ko" ? "시작일" : "Desde"}
+                                    </label>
+                                    <input
+                                        id="analytics-from"
+                                        type="date"
+                                        className={styles.analyticsDateInput}
+                                        value={analyticsFrom}
+                                        onChange={e => setAnalyticsFrom(e.target.value)}
+                                    />
+                                </div>
+                                <span className={styles.analyticsDateSep}>→</span>
+                                <div className={styles.analyticsDateGroup}>
+                                    <label className={styles.analyticsDateLabel}>
+                                        {lang === "ko" ? "종료일" : "Hasta"}
+                                    </label>
+                                    <input
+                                        id="analytics-to"
+                                        type="date"
+                                        className={styles.analyticsDateInput}
+                                        value={analyticsTo}
+                                        onChange={e => setAnalyticsTo(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                            <div className={styles.analyticsQuickBtns}>
+                                <button className={styles.quickBtn} onClick={() => setQuickRange(7)}>
+                                    {lang === "ko" ? "최근 7일" : "7 días"}
+                                </button>
+                                <button className={styles.quickBtn} onClick={() => setQuickRange(30)}>
+                                    {lang === "ko" ? "최근 30일" : "30 días"}
+                                </button>
+                                <button className={styles.quickBtn} onClick={setThisMonth}>
+                                    {lang === "ko" ? "이번달" : "Este mes"}
+                                </button>
+                                <button className={styles.quickBtn} onClick={setLastMonth}>
+                                    {lang === "ko" ? "지난달" : "Mes ant."}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* 카테고리 탭 필터 */}
+                        <div className={styles.analyticsCatBar}>
+                            <button
+                                className={`${styles.analyticsCatBtn} ${analyticsMainCat === "all" ? styles.analyticsCatActive : ""}`}
+                                onClick={() => setAnalyticsMainCat("all")}
+                            >
+                                {lang === "ko" ? "전체" : "Todos"}
+                                <span className={styles.analyticsCatBadge}>{mainGrandTotal}</span>
+                            </button>
+                            {allMainCats.map(cat => (
+                                <button
+                                    key={cat}
+                                    className={`${styles.analyticsCatBtn} ${analyticsMainCat === cat ? styles.analyticsCatActive : ""}`}
+                                    onClick={() => setAnalyticsMainCat(cat)}
+                                >
+                                    {cat}
+                                    <span className={styles.analyticsCatBadge}>
+                                        {mainMap.get(cat)?.total ?? 0}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* 결과 */}
+                        {salesEntries.length === 0 ? (
+                            <div className={styles.analyticsEmpty}>
+                                📭 {lang === "ko" ? "해당 기간에 납품 내역이 없습니다." : "Sin entregas en el período seleccionado."}
+                            </div>
+                        ) : analyticsMainCat === "all" ? (
+                            /* ── 전체: 카테고리별 큰 덩어리 ── */
+                            <div className={styles.analyticsGrid}>
+                                {mainRows.map(mr => {
+                                    const pct = mainGrandTotal > 0 ? Math.round((mr.total / mainGrandTotal) * 100) : 0;
+                                    return (
+                                        <div
+                                            key={mr.main}
+                                            className={styles.analyticsCatCard}
+                                            onClick={() => setAnalyticsMainCat(mr.main)}
+                                        >
+                                            <div className={styles.analyticsCatCardHeader}>
+                                                <span className={styles.analyticsCatCardName}>{mr.main}</span>
+                                                <span className={styles.analyticsCatCardTotal}>{mr.total.toLocaleString()}<span style={{fontSize:11,fontWeight:500,marginLeft:3}}>{lang==="ko"?"개":"uds."}</span></span>
+                                            </div>
+                                            <div className={styles.analyticsBar}>
+                                                <div className={styles.analyticsBarFill} style={{ width: `${pct}%` }} />
+                                            </div>
+                                            <div className={styles.analyticsCatCardPct}>{pct}%</div>
+                                            <div className={styles.analyticsCatCardHint}>
+                                                {lang === "ko" ? "클릭하면 서브카테고리 보기" : "Clic para ver subcategorías"} →
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                <div className={styles.analyticsTotalCard}>
+                                    <span className={styles.analyticsTotalLabel}>{lang === "ko" ? "총 납품 합계" : "Total entregado"}</span>
+                                    <span className={styles.analyticsTotalVal}>{mainGrandTotal.toLocaleString()}</span>
+                                    <span className={styles.analyticsTotalUnit}>{lang === "ko" ? "개" : "uds."}</span>
+                                </div>
+                            </div>
+                        ) : (
+                            /* ── 특정 카테고리: 서브별 상세 ── */
+                            <div className={styles.analyticsDetail}>
+                                <div className={styles.analyticsDetailHeader}>
+                                    <button className={styles.analyticsBackBtn} onClick={() => setAnalyticsMainCat("all")}>
+                                        ← {lang === "ko" ? "전체" : "Todos"}
+                                    </button>
+                                    <h3 className={styles.analyticsDetailTitle}>{analyticsMainCat}</h3>
+                                    <span className={styles.analyticsDetailTotal}>
+                                        {lang === "ko" ? "합계" : "Total"} {grandTotal.toLocaleString()} {lang === "ko" ? "개" : "uds."}
+                                    </span>
+                                </div>
+
+                                <div className={styles.analyticsSubTable}>
+                                    <div className={styles.analyticsSubHead}>
+                                        <span>{lang === "ko" ? "서브카테고리" : "Subcategoría"}</span>
+                                        <span style={{textAlign:"right"}}>{lang === "ko" ? "납품 수량" : "Entregado"}</span>
+                                        <span style={{textAlign:"right"}}>{lang === "ko" ? "비율" : "Ratio"}</span>
+                                    </div>
+                                    {subRows.map(sr => {
+                                        const pct = grandTotal > 0 ? Math.round((sr.total / grandTotal) * 100) : 0;
+                                        const colorEntries = Array.from(sr.colorMap.entries()).sort((a, b) => b[1] - a[1]);
+                                        return (
+                                            <div key={sr.sub} className={styles.analyticsSubRow}>
+                                                <div className={styles.analyticsSubRowTop}>
+                                                    <span className={styles.analyticsSubName}>{sr.sub}</span>
+                                                    <span className={styles.analyticsSubQty}>{sr.total.toLocaleString()}</span>
+                                                    <span className={styles.analyticsSubPct}>{pct}%</span>
+                                                </div>
+                                                <div className={styles.analyticsBar} style={{margin:"6px 0 8px"}}>
+                                                    <div className={styles.analyticsBarFillSub} style={{ width: `${pct}%` }} />
+                                                </div>
+                                                {/* 색상/사이즈 상세 */}
+                                                <div className={styles.analyticsColorRow}>
+                                                    {colorEntries.map(([ck, v]) => (
+                                                        <span key={ck} className={styles.analyticsColorTag}>
+                                                            <span className={styles.analyticsColorKey}>{ck}</span>
+                                                            <span className={styles.analyticsColorVal}>{v}</span>
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            })()}
 
             {/* ═══ TAB: 새 주문 ═══ */}
             {tab === "new" && (

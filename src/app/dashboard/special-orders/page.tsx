@@ -14,6 +14,7 @@ type SpecialOrder = {
     memo: string | null;
     status: string;
     created_at: string;
+    order_number: string | null;
 };
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
@@ -76,15 +77,33 @@ export default function SpecialOrdersPage() {
         setLoading(false);
     };
 
+    const generateOrderNumber = async (): Promise<string> => {
+        // order_number가 있는 행들 중 최대값 조회 (E-NNNNN 형식)
+        const { data } = await supabase
+            .from("special_orders")
+            .select("order_number")
+            .not("order_number", "is", null)
+            .order("order_number", { ascending: false })
+            .limit(1);
+        let nextNum = 1;
+        if (data && data.length > 0 && data[0].order_number) {
+            const lastNum = parseInt(data[0].order_number.replace("E-", ""), 10);
+            if (!isNaN(lastNum)) nextNum = lastNum + 1;
+        }
+        return `E-${String(nextNum).padStart(5, "0")}`;
+    };
+
     const saveOrder = async () => {
         if (!customerName.trim()) return;
         setSaving(true);
+        const orderNumber = await generateOrderNumber();
         await supabase.from("special_orders").insert([{
             customer_name: customerName.trim(),
             order_date: orderDate,
             due_date: dueDate,
             memo: memo || null,
             status: "active",
+            order_number: orderNumber,
         }]);
         setSaving(false);
         setCustomerName(""); setOrderDate(todayStr()); setDueDate(dueDateStr()); setMemo("");
@@ -240,6 +259,9 @@ export default function SpecialOrdersPage() {
                                     <div className={styles.cardLeft}>
                                         <span className={styles.cardCustomer}>
                                             {isDone ? "✅ " : "📋 "}{order.customer_name}
+                                            {order.order_number && (
+                                                <span className={styles.orderBadge}>{order.order_number}</span>
+                                            )}
                                         </span>
                                         <div className={styles.cardDates}>
                                             <span>{lang === "ko" ? "주문" : "Pedido"}: {fmtDate(order.order_date)}</span>

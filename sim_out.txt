@@ -1,0 +1,111 @@
+﻿≡ƒÜÇ Starting Production Line Simulation (1000 Cuttings)...
+Fetching reference data...
+Generating 1000 random orders...
+Fetching current inventory baseline...
+Inserting orders into 'cutting' stage...
+Advancing to 'sewing'...
+Advancing to 'returned' (with realistic random quantity losses)...
+Advancing to 'finishing'...
+Advancing to 'done' (Concurrent updates to test RPC)...
+Finished processing done. Success: 1000, Errors: 0
+Verifying Inventory Accuracy...
+Γ¥î Mismatch for mujer|Camisa MC (S-03)|Rojo|M: Expected 525, Got 522
+Γ¥î Mismatch for mujer|Camisa 3/4 (S-02)|Verde|M: Expected 193, Got 198
+Γ¥î Mismatch for hombre|Pantalon tropical (PH-01)|Azul|S: Expected 160, Got 295
+Γ¥î Mismatch for hombre|Saco tropical (CH-01)|Verde|L: Expected 185, Got 282
+Γ¥î Mismatch for mujer|Camisa MC (S-03)|Negro|L: Expected 257, Got 367
+Γ¥î Mismatch for hombre|Camisa ML (SH-01)|Negro|M: Expected 162, Got 157
+Γ¥î Mismatch for mujer|Pollera tropical (Sk-01)|Blanco|M: Expected 393, Got 394
+Γ¥î Mismatch for mujer|Camisa 3/4 (S-02)|Negro|XL: Expected 248, Got 314
+Γ¥î Mismatch for mujer|Pantalon sastrera (P-02)|Negro|XL: Expected 116, Got 195
+Γ¥î Mismatch for mujer|Pollera tropical (Sk-01)|Rojo|L: Expected 276, Got 327
+Γ¥î Mismatch for mujer|Camisa ML (S-01)|Rojo|M: Expected 219, Got 218
+Γ¥î Mismatch for mujer|Saco sastrera (C-02)|Blanco|M: Expected 141, Got 241
+Γ¥î Mismatch for mujer|Camisa ML (S-01)|Azul|S: Expected 186, Got 191
+Γ¥î Mismatch for mujer|Camisa Elastizada ML (S-04)|Negro|XL: Expected 177, Got 342
+Γ¥î Mismatch for hombre|Pantalon tropical (PH-01)|Rojo|L: Expected 259, Got 343
+Γ¥î Mismatch for mujer|Pantalon tropical (P-01)|Negro|XL: Expected 255, Got 338
+Γ¥î Mismatch for mujer|Camisa MC (S-03)|Blanco|S: Expected 141, Got 146
+Γ¥î Mismatch for hombre|Pantalon tropical (PH-01)|Verde|M: Expected 369, Got 371
+Γ¥î Mismatch for mujer|Pantalon sastrera (P-02)|Blanco|L: Expected 335, Got 342
+Γ¥î Mismatch for hombre|Camisa MC (SH-02)|Negro|XL: Expected 134, Got 328
+Γ¥î Mismatch for mujer|Saco tropical (C-01)|Verde|L: Expected 201, Got 198
+Γ¥î Mismatch for mujer|Saco tropical (C-01)|Verde|S: Expected 187, Got 192
+Γ¥î Mismatch for mujer|Camisa 3/4 (S-02)|Blanco|M: Expected 276, Got 282
+Γ¥î Mismatch for mujer|Pantalon gabardina (P-03)|Blanco|L: Expected 366, Got 367
+Γ¥î Mismatch for mujer|Camisa 3/4 (S-02)|Rojo|L: Expected 286, Got 282
+Γ¥î Mismatch for mujer|Camisa Elastizada ML (S-04)|Verde|M: Expected 126, Got 130
+Γ¥î Mismatch for mujer|Pantalon sastrera (P-02)|Verde|XL: Expected 318, Got 313
+Γ¥î Mismatch for mujer|Camisa ML (S-01)|Verde|M: Expected 297, Got 292
+Γ¥î Mismatch for mujer|Camisa ML (S-01)|Azul|L: Expected 200, Got 205
+Γ¥î Mismatch for hombre|Saco tropical (CH-01)|Verde|S: Expected 135, Got 252
+Γ¥î Mismatch for mujer|Pollera tropical (Sk-01)|Verde|S: Expected 263, Got 258
+Γ¥î Mismatch for mujer|Camisa MC (S-03)|Verde|S: Expected 315, Got 311
+Γ¥î Mismatch for hombre|Camisa MC (SH-02)|Verde|L: Expected 320, Got 319
+Γ¥î Mismatch for mujer|Saco tropical (C-01)|Azul|S: Expected 141, Got 137
+Γ¥î Mismatch for mujer|Pantalon tropical (P-01)|Negro|M: Expected 360, Got 363
+Γ¥î Mismatch for mujer|Pantalon tropical (P-01)|Rojo|S: Expected 377, Got 383
+Γ¥î Mismatch for mujer|Pantalon tropical (P-01)|Azul|M: Expected 343, Got 345
+Γ¥î Mismatch for mujer|Camisa Elastizada ML (S-04)|Blanco|S: Expected 134, Got 250
+Γ¥î Mismatch for mujer|Pantalon tropical (P-01)|Azul|L: Expected 326, Got 328
+Γ¥î Mismatch for hombre|Camisa ML (SH-01)|Blanco|L: Expected 113, Got 434
+Γ¥î Mismatch for mujer|Pantalon tropical (P-01)|Negro|L: Expected 170, Got 171
+Γ¥î Mismatch for mujer|Pantalon sastrera (P-02)|Negro|S: Expected 170, Got 169
+Γ¥î Mismatch for hombre|Pantalon tropical (PH-01)|Negro|XL: Expected 351, Got 355
+Γ¥î Mismatch for mujer|Pollera tropical (Sk-01)|Blanco|L: Expected 237, Got 230
+Γ¥î Mismatch for mujer|Pantalon sastrera (P-02)|Blanco|S: Expected 143, Got 141
+Γ¥î Mismatch for mujer|Camisa ML (S-01)|Blanco|S: Expected 235, Got 292
+Γ¥î Mismatch for mujer|Camisa MC (S-03)|Rojo|S: Expected 149, Got 153
+Γ¥î Mismatch for mujer|Pantalon sastrera (P-02)|Verde|M: Expected 256, Got 252
+Γ¥î Mismatch for hombre|Pantalon tropical (PH-01)|Verde|XL: Expected 86, Got 90
+Γ¥î Mismatch for hombre|Camisa ML (SH-01)|Blanco|M: Expected 378, Got 377
+Γ¥î Mismatch for mujer|Saco sastrera (C-02)|Verde|M: Expected 307, Got 411
+Γ¥î Mismatch for mujer|Saco sastrera (C-02)|Negro|L: Expected 193, Got 284
+Γ¥î Mismatch for hombre|Camisa MC (SH-02)|Azul|XL: Expected 276, Got 273
+Γ¥î Mismatch for mujer|Camisa ML (S-01)|Azul|M: Expected 282, Got 281
+Γ¥î Mismatch for mujer|Pantalon tropical (P-01)|Verde|M: Expected 230, Got 283
+Γ¥î Mismatch for mujer|Pantalon gabardina (P-03)|Negro|XL: Expected 184, Got 185
+Γ¥î Mismatch for mujer|Saco sastrera (C-02)|Rojo|L: Expected 509, Got 506
+Γ¥î Mismatch for mujer|Camisa Elastizada ML (S-04)|Azul|M: Expected 282, Got 413
+Γ¥î Mismatch for hombre|Saco tropical (CH-01)|Rojo|M: Expected 390, Got 395
+Γ¥î Mismatch for mujer|Saco tropical (C-01)|Negro|S: Expected 185, Got 189
+Γ¥î Mismatch for mujer|Camisa Elastizada ML (S-04)|Azul|XL: Expected 305, Got 310
+Γ¥î Mismatch for mujer|Pantalon tropical (P-01)|Rojo|M: Expected 233, Got 228
+Γ¥î Mismatch for mujer|Camisa MC (S-03)|Verde|L: Expected 286, Got 285
+Γ¥î Mismatch for mujer|Camisa Elastizada ML (S-04)|Azul|S: Expected 316, Got 313
+Γ¥î Mismatch for hombre|Pantalon tropical (PH-01)|Rojo|M: Expected 178, Got 220
+Γ¥î Mismatch for mujer|Pollera tropical (Sk-01)|Verde|M: Expected 598, Got 601
+Γ¥î Mismatch for hombre|Camisa MC (SH-02)|Rojo|XL: Expected 76, Got 235
+Γ¥î Mismatch for hombre|Saco tropical (CH-01)|Rojo|L: Expected 112, Got 221
+Γ¥î Mismatch for hombre|Pantalon tropical (PH-01)|Azul|M: Expected 239, Got 244
+Γ¥î Mismatch for mujer|Pantalon gabardina (P-03)|Azul|L: Expected 269, Got 274
+Γ¥î Mismatch for mujer|Saco tropical (C-01)|Blanco|L: Expected 134, Got 129
+Γ¥î Mismatch for mujer|Camisa 3/4 (S-02)|Azul|L: Expected 172, Got 167
+Γ¥î Mismatch for mujer|Camisa MC (S-03)|Negro|M: Expected 243, Got 244
+Γ¥î Mismatch for mujer|Camisa Elastizada ML (S-04)|Blanco|L: Expected 103, Got 371
+Γ¥î Mismatch for hombre|Camisa ML (SH-01)|Verde|L: Expected 163, Got 154
+Γ¥î Mismatch for mujer|Pantalon gabardina (P-03)|Verde|S: Expected 143, Got 166
+Γ¥î Mismatch for mujer|Saco sastrera (C-02)|Azul|M: Expected 266, Got 263
+Γ¥î Mismatch for mujer|Pollera tropical (Sk-01)|Rojo|XL: Expected 149, Got 148
+Γ¥î Mismatch for mujer|Camisa Elastizada ML (S-04)|Rojo|S: Expected 213, Got 347
+Γ¥î Mismatch for hombre|Pantalon tropical (PH-01)|Blanco|L: Expected 162, Got 164
+Γ¥î Mismatch for mujer|Pantalon gabardina (P-03)|Blanco|XL: Expected 280, Got 284
+Γ¥î Mismatch for mujer|Camisa Elastizada ML (S-04)|Negro|L: Expected 10, Got 168
+Γ¥î Mismatch for mujer|Camisa Elastizada ML (S-04)|Negro|M: Expected 40, Got 232
+Γ¥î Mismatch for mujer|Camisa Elastizada ML (S-04)|Negro|S: Expected 139, Got 287
+Γ¥î Mismatch for hombre|Pantalon tropical (PH-01)|Azul|L: Expected 270, Got 267
+Γ¥î Mismatch for mujer|Camisa ML (S-01)|Negro|XL: Expected 253, Got 251
+Γ¥î Mismatch for mujer|Camisa Elastizada ML (S-04)|Blanco|XL: Expected 65, Got 292
+Γ¥î Mismatch for mujer|Pollera tropical (Sk-01)|Azul|S: Expected 82, Got 78
+Γ¥î Mismatch for mujer|Camisa 3/4 (S-02)|Negro|M: Expected 131, Got 276
+Γ¥î Mismatch for mujer|Pantalon sastrera (P-02)|Verde|L: Expected 86, Got 88
+Γ¥î Mismatch for mujer|Pantalon gabardina (P-03)|Azul|M: Expected 44, Got 190
+Γ¥î Mismatch for mujer|Pollera tropical (Sk-01)|Blanco|XL: Expected 369, Got 372
+Γ¥î Mismatch for mujer|Pollera tropical (Sk-01)|Azul|XL: Expected 114, Got 115
+Γ¥î Mismatch for mujer|Pantalon gabardina (P-03)|Blanco|M: Expected 98, Got 249
+Γ¥î Mismatch for mujer|Camisa 3/4 (S-02)|Rojo|S: Expected 174, Got 179
+Γ¥î Mismatch for mujer|Saco tropical (C-01)|Rojo|XL: Expected 134, Got 133
+Γ¥î Mismatch for mujer|Pantalon sastrera (P-02)|Azul|L: Expected 78, Got 155
+ΓÜá∩╕Å Simulation finished with 97 mismatches.
+Cleaning up simulated orders...
+Simulation complete!
