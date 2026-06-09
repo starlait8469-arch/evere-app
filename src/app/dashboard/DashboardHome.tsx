@@ -6,6 +6,19 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./dashboard.module.css";
 
+interface CutRecommendation {
+    main_category: string;
+    sub_category: string;
+    color: string;
+    size: string;
+    sold12m: number;    // 지난 1년 총 판매량
+    peakMonth: number;  // 지난 1년 중 최고 월 판매량 = 최소 유지 목표량
+    currentStock: number;
+    cuttingQty: number;
+    pipelineQty: number;    // cutting + sewing + returned + finishing 합산
+    effectiveStock: number; // currentStock + pipelineQty
+}
+
 interface Props {
     inProgress: number;
     needsCut: number;
@@ -15,6 +28,7 @@ interface Props {
     hasNewFabricToday: boolean;
     readyToDeliverCount: number;
     readyToDeliverOrders: { id: string; order_number: string | null; customer_name: string | null }[];
+    cutRecommendations: CutRecommendation[];
 }
 
 type Stage = "cutting" | "sewing" | "returned" | "finishing" | "done";
@@ -36,9 +50,9 @@ interface FactoryOrder {
     advanceQty: number; // 입력값
 }
 
-const LOW_STOCK_THRESHOLD = 10;
 
-export default function DashboardHome({ inProgress, needsCut, sewingCount, needsPlanchaCount, needsPlanchaItems, hasNewFabricToday, readyToDeliverCount, readyToDeliverOrders }: Props) {
+
+export default function DashboardHome({ inProgress, needsCut, sewingCount, needsPlanchaCount, needsPlanchaItems, hasNewFabricToday, readyToDeliverCount, readyToDeliverOrders, cutRecommendations }: Props) {
     const { t, lang } = useLanguage();
     const supabase = createClient();
 
@@ -84,10 +98,9 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
 
     // ── 재단하기 모달 ──
     const [showCutModal, setShowCutModal] = useState(false);
-    const [cutItems, setCutItems] = useState<{ id: string; name: string; main_category: string; sub_category: string; color: string; size: string; quantity: number; cutting_qty: number }[]>([]);
-    const [cutLoading, setCutLoading] = useState(false);
     const [cutFilterMain, setCutFilterMain] = useState<"all" | "hombre" | "mujer">("all");
     const [cutFilterSub, setCutFilterSub] = useState<string>("all");
+    const [cutFilterUrgent, setCutFilterUrgent] = useState(false); // 재단 필요만 보기
 
     // ── 봉제공장 모달 ──
     const [showFactoryModal, setShowFactoryModal] = useState(false);
@@ -103,54 +116,7 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
     const [planchaSelectedIds, setPlanchaSelectedIds] = useState<Set<string>>(new Set());
     const [planchaSending, setPlanchaSending] = useState(false);
 
-    // 재단하기 데이터 로드
-    const fetchCutItems = async () => {
-        setCutLoading(true);
-        const { data: invData } = await supabase
-            .from("inventory")
-            .select("id, name, main_category, sub_category, color, size, quantity")
-            .order("quantity", { ascending: true });
 
-        const { data: cuttingOrders } = await supabase
-            .from("production_orders")
-            .select("main_category, sub_category, color, size, quantity")
-            .eq("stage", "cutting");
-
-        // 수량 합산 및 중복 제거 (대소문자 및 공백 무시)
-        const groupedMap = new Map<string, any>();
-
-        (invData ?? []).forEach(inv => {
-            const m = (inv.main_category || "").trim().toLowerCase();
-            const s = (inv.sub_category || "").trim().toLowerCase();
-            const c = (inv.color || "").trim().toLowerCase();
-            const sz = (inv.size || "").trim().toLowerCase();
-            const key = `${m}|${s}|${c}|${sz}`;
-
-            if (groupedMap.has(key)) {
-                groupedMap.get(key)!.quantity += (inv.quantity || 0);
-            } else {
-                groupedMap.set(key, { ...inv });
-            }
-        });
-
-        const items = Array.from(groupedMap.values())
-            .filter(inv => inv.quantity < LOW_STOCK_THRESHOLD) // 합산 수량이 여전히 임계값 미만인 것만
-            .map((inv) => {
-                const cuttingQty = (cuttingOrders ?? [])
-                    .filter(c =>
-                        (c.main_category || "").trim().toLowerCase() === (inv.main_category || "").trim().toLowerCase() &&
-                        (c.sub_category || "").trim().toLowerCase() === (inv.sub_category || "").trim().toLowerCase() &&
-                        (c.color || "").trim().toLowerCase() === (inv.color || "").trim().toLowerCase() &&
-                        (c.size || "").trim().toLowerCase() === (inv.size || "").trim().toLowerCase()
-                    )
-                    .reduce((sum, c) => sum + (c.quantity ?? 0), 0);
-                return { ...inv, cutting_qty: cuttingQty };
-            });
-
-        items.sort((a, b) => (a.quantity + a.cutting_qty) - (b.quantity + b.cutting_qty));
-        setCutItems(items);
-        setCutLoading(false);
-    };
 
     // 봉제공장 목록 + 봉제 건수 로드
     const fetchFactories = async () => {
@@ -222,7 +188,6 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
     const handleCutCardClick = (e: React.MouseEvent) => {
         e.preventDefault();
         setShowCutModal(true);
-        fetchCutItems();
     };
 
     const handleFactoryCardClick = (e: React.MouseEvent) => {
@@ -525,29 +490,30 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
                         <div className={styles.modalHeader}>
                             <div>
                                 <h2 className={styles.modalTitle}>
-                                    ✂️ {lang === "ko" ? "재단 필요 품목" : "Artículos a cortar"}
+                                    ✂️ {lang === "ko" ? "재단 추천" : "Recomendación de corte"}
                                 </h2>
                                 <p className={styles.modalSubtitle}>
                                     {lang === "ko"
-                                        ? `재고 ${LOW_STOCK_THRESHOLD}개 미만 · 수량 낮은 순`
-                                        : `Stock < ${LOW_STOCK_THRESHOLD} uds · orden ascendente`}
+                                        ? "지난 1년 최대 월판매량 기준 · 연간 판매 많은 순"
+                                        : "Basado en el mes pico de ventas del último año"}
                                 </p>
                             </div>
-                            <button className={styles.modalClose} onClick={() => { setShowCutModal(false); setCutFilterMain("all"); setCutFilterSub("all"); }}>✕</button>
+                            <button className={styles.modalClose} onClick={() => { setShowCutModal(false); setCutFilterMain("all"); setCutFilterSub("all"); setCutFilterUrgent(false); }}>✕</button>
                         </div>
 
-                        {/* 카테고리 필터 */}
-                        {!cutLoading && cutItems.length > 0 && (() => {
+                        {/* 카테고리 필터 + 재단 필요 토글 */}
+                        {cutRecommendations.length > 0 && (() => {
                             const availableSubs = Array.from(
                                 new Set(
-                                    cutItems
-                                        .filter(i => cutFilterMain === "all" || i.main_category === cutFilterMain)
-                                        .map(i => i.sub_category)
+                                    cutRecommendations
+                                        .filter(r => cutFilterMain === "all" || r.main_category === cutFilterMain)
+                                        .map(r => r.sub_category)
                                         .filter(Boolean)
                                 )
                             ).sort();
+                            const urgentCount = cutRecommendations.filter(r => r.effectiveStock < r.peakMonth).length;
                             return (
-                                <div style={{ display: "flex", gap: 8, padding: "8px 20px", flexWrap: "wrap", borderBottom: "1px solid var(--border)" }}>
+                                <div style={{ display: "flex", gap: 8, padding: "8px 20px", flexWrap: "wrap", borderBottom: "1px solid var(--border)", alignItems: "center" }}>
                                     <select
                                         value={cutFilterMain}
                                         onChange={e => { setCutFilterMain(e.target.value as any); setCutFilterSub("all"); }}
@@ -560,58 +526,101 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
                                     <select
                                         value={cutFilterSub}
                                         onChange={e => setCutFilterSub(e.target.value)}
-                                        style={{ fontSize: 13, padding: "4px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", cursor: "pointer", flex: 1, minWidth: 160 }}
+                                        style={{ fontSize: 13, padding: "4px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", cursor: "pointer", flex: 1, minWidth: 120 }}
                                     >
-                                        <option value="all">{lang === "ko" ? "전체 서브카테고리" : "Todas las subcategorías"}</option>
+                                        <option value="all">{lang === "ko" ? "전체 서브" : "Todas las sub"}</option>
                                         {availableSubs.map(s => <option key={s} value={s}>{s}</option>)}
                                     </select>
+                                    <button
+                                        onClick={() => setCutFilterUrgent(prev => !prev)}
+                                        style={{
+                                            fontSize: 12,
+                                            fontWeight: 700,
+                                            padding: "4px 10px",
+                                            borderRadius: 20,
+                                            border: cutFilterUrgent ? "none" : "1px solid var(--border)",
+                                            background: cutFilterUrgent ? "rgba(239,68,68,0.15)" : "transparent",
+                                            color: cutFilterUrgent ? "#ef4444" : "var(--text-muted)",
+                                            cursor: "pointer",
+                                            whiteSpace: "nowrap",
+                                            transition: "all 0.15s",
+                                            flexShrink: 0,
+                                        }}
+                                    >
+                                        ✂️ {lang === "ko" ? `재단 필요 (${urgentCount})` : `Cortar (${urgentCount})`}
+                                    </button>
                                 </div>
                             );
                         })()}
 
-                        {cutLoading ? (
-                            <div className={styles.modalEmpty}>{lang === "ko" ? "불러오는 중..." : "Cargando..."}</div>
-                        ) : cutItems.length === 0 ? (
+                        {cutRecommendations.length === 0 ? (
                             <div className={styles.modalEmpty}>
-                                {lang === "ko" ? "재단 필요 품목이 없습니다 🎉" : "¡No hay artículos que cortar! 🎉"}
+                                {lang === "ko"
+                                    ? "최근 1년 판매 데이터가 없습니다."
+                                    : "No hay datos de venta en el último año."}
                             </div>
-                        ) : (
-                            <div className={styles.modalList}>
-                                {cutItems
-                                    .filter(item =>
-                                        (cutFilterMain === "all" || item.main_category === cutFilterMain) &&
-                                        (cutFilterSub === "all" || item.sub_category === cutFilterSub)
-                                    )
-                                    .map((item, idx) => {
-                                        const isUrgent = item.quantity === 0;
+                        ) : (() => {
+                            const filtered = cutRecommendations.filter(r =>
+                                (cutFilterMain === "all" || r.main_category === cutFilterMain) &&
+                                (cutFilterSub === "all" || r.sub_category === cutFilterSub) &&
+                                (!cutFilterUrgent || r.effectiveStock < r.peakMonth)
+                            );
+                            return filtered.length === 0 ? (
+                                <div className={styles.modalEmpty}>
+                                    {lang === "ko" ? "해당 필터에 품목이 없습니다." : "No hay artículos en este filtro."}
+                                </div>
+                            ) : (
+                                <div className={styles.modalList}>
+                                    {filtered.map((item, idx) => {
+                                        const needsCutItem = item.effectiveStock < item.peakMonth;
                                         return (
-                                            <div key={item.id} className={`${styles.cutItem} ${isUrgent ? styles.cutItemUrgent : ""}`}>
+                                            <div
+                                                key={`${item.sub_category}-${item.color}-${item.size}`}
+                                                className={`${styles.cutItem} ${needsCutItem ? styles.cutItemUrgent : ""}`}
+                                            >
                                                 <div className={styles.cutRank}>#{idx + 1}</div>
                                                 <div className={styles.cutInfo}>
-                                                    <div className={styles.cutName}>{item.name}</div>
+                                                    <div className={styles.cutName}>{item.sub_category}</div>
                                                     <div className={styles.cutMeta}>
-                                                        {item.sub_category && <span className={styles.cutBadge}>{item.sub_category}</span>}
                                                         {item.color && <span className={styles.cutTag}>🎨 {item.color}</span>}
                                                         {item.size && <span className={styles.cutTag}>{lang === "ko" ? "사이즈" : "Talla"} {item.size}</span>}
                                                     </div>
+                                                    {/* 판매 통계 */}
+                                                    <div className={styles.cutSalesBar}>
+                                                        <span>{lang === "ko" ? `연간: ${item.sold12m}개` : `Año: ${item.sold12m}`}</span>
+                                                        <span className={styles.cutSalesDivider}>·</span>
+                                                        <span style={{ fontWeight: 700, color: "var(--text-primary)" }}>
+                                                            {lang === "ko" ? `최다월: ${item.peakMonth}개` : `Mes pico: ${item.peakMonth}`}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                                 <div className={styles.cutQtyGroup}>
-                                                    <div className={`${styles.cutQty} ${isUrgent ? styles.cutQtyZero : ""}`}>
+                                                    <div className={`${styles.cutQty} ${item.currentStock === 0 ? styles.cutQtyZero : ""}`}>
                                                         <span className={styles.cutQtyLabel}>{lang === "ko" ? "재고" : "Stock"}</span>
-                                                        <span className={styles.cutQtyNum}>{item.quantity}</span>
+                                                        <span className={styles.cutQtyNum}>{item.currentStock}</span>
                                                     </div>
-                                                    {item.cutting_qty > 0 && (
+                                                    {item.pipelineQty > 0 && (
                                                         <div className={styles.cutQtyCutting}>
-                                                            <span className={styles.cutQtyLabel}>{lang === "ko" ? "재단중" : "Cortando"}</span>
-                                                            <span className={styles.cutQtyNum}>{item.cutting_qty}</span>
+                                                            <span className={styles.cutQtyLabel}>{lang === "ko" ? "생산중" : "En prod."}</span>
+                                                            <span className={styles.cutQtyNum}>{item.pipelineQty}</span>
+                                                        </div>
+                                                    )}
+                                                    {needsCutItem ? (
+                                                        <div className={styles.cutNeedsBadge}>
+                                                            {lang === "ko" ? "재단 필요" : "Cortar"}
+                                                        </div>
+                                                    ) : (
+                                                        <div className={styles.cutOkBadge}>
+                                                            {lang === "ko" ? "충분" : "OK"}
                                                         </div>
                                                     )}
                                                 </div>
                                             </div>
                                         );
                                     })}
-                            </div>
-                        )}
+                                </div>
+                            );
+                        })()}
 
                         <div className={styles.modalFooter}>
                             <Link href="/dashboard/production" className={styles.modalGoBtn} onClick={() => setShowCutModal(false)}>

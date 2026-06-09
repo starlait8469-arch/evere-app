@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import DashboardHome from "./DashboardHome";
 
-const LOW_STOCK_THRESHOLD = 10;
+
 
 export default async function DashboardPage() {
     const supabase = await createClient();
@@ -20,44 +20,108 @@ export default async function DashboardPage() {
         .select("main_category, sub_category, color, size, quantity");
     const inventory = inventoryData || [];
 
-    const { data: cuttingOrders } = await supabase
-        .from("production_orders")
-        .select("main_category, sub_category, color, size")
-        .eq("stage", "cutting");
+    // ── 재단 추천: 지난 1년 최고 월 판매량 기반 (sub_category × color × size 단위) ──
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1);
 
-    // 재단하기: 재고 낮고(< threshold) + cutting 단계 주문 없는 품목 (중복 레코드 합산 후 판단)
-    const groupedMap = new Map<string, any>();
-    inventory.forEach(inv => {
+    const { data: salesRaw } = await supabase
+        .from("sales_history")
+        .select("quantity, created_at, inventory:inventory_id(main_category, sub_category, color, size)")
+        .gte("created_at", twelveMonthsAgo.toISOString());
+
+    // cutting + sewing + returned(봉제입고) + finishing(Plancha) 전체 파이프라인 조회
+    const { data: allPipelineOrders } = await supabase
+        .from("production_orders")
+        .select("main_category, sub_category, color, size, quantity, stage")
+        .in("stage", ["cutting", "sewing", "returned", "finishing"]);
+
+    // sub_category × color × size 단위로 판매 집계 (월별 그룹핑)
+    const salesMap = new Map<string, {
+        main_category: string; sub_category: string; color: string; size: string;
+        sold12m: number;
+        monthlySales: { [yyyymm: string]: number }; // YYYY-MM → 해당월 판매 합계
+    }>();
+
+    (salesRaw ?? []).forEach(row => {
+        const inv = (row.inventory as unknown) as { main_category: string; sub_category: string; color: string; size: string } | null;
+        if (!inv) return;
         const m = (inv.main_category || "").trim().toLowerCase();
         const s = (inv.sub_category || "").trim().toLowerCase();
         const c = (inv.color || "").trim().toLowerCase();
         const sz = (inv.size || "").trim().toLowerCase();
         const key = `${m}|${s}|${c}|${sz}`;
-
-        if (groupedMap.has(key)) {
-            groupedMap.get(key)!.quantity += (inv.quantity || 0);
+        const yyyymm = (row.created_at as string).slice(0, 7); // "2025-06"
+        const qty = row.quantity || 0;
+        if (salesMap.has(key)) {
+            const entry = salesMap.get(key)!;
+            entry.sold12m += qty;
+            entry.monthlySales[yyyymm] = (entry.monthlySales[yyyymm] || 0) + qty;
         } else {
-            groupedMap.set(key, { ...inv });
+            salesMap.set(key, {
+                main_category: inv.main_category,
+                sub_category: inv.sub_category,
+                color: inv.color,
+                size: inv.size,
+                sold12m: qty,
+                monthlySales: { [yyyymm]: qty },
+            });
         }
     });
 
-    const needCutItems = Array.from(groupedMap.values()).filter(inv => {
-        if (inv.quantity >= LOW_STOCK_THRESHOLD) return false; // 합치고 나서도 재고가 충분히 있으면 노출 안 함
+    const cutRecommendations = Array.from(salesMap.values()).map(item => {
+        const mL = (item.main_category || "").trim().toLowerCase();
+        const sL = (item.sub_category || "").trim().toLowerCase();
+        const cL = (item.color || "").trim().toLowerCase();
+        const szL = (item.size || "").trim().toLowerCase();
 
-        const invMainLower = (inv.main_category || "").trim().toLowerCase();
-        const invSubLower = (inv.sub_category || "").trim().toLowerCase();
-        const invColorLower = (inv.color || "").trim().toLowerCase();
-        const invSizeLower = (inv.size || "").trim().toLowerCase();
+        const currentStock = inventory
+            .filter(inv =>
+                (inv.main_category || "").trim().toLowerCase() === mL &&
+                (inv.sub_category || "").trim().toLowerCase() === sL &&
+                (inv.color || "").trim().toLowerCase() === cL &&
+                (inv.size || "").trim().toLowerCase() === szL
+            )
+            .reduce((sum, inv) => sum + (inv.quantity || 0), 0);
 
-        const hasCutting = (cuttingOrders || []).some(c =>
-            (c.main_category || "").trim().toLowerCase() === invMainLower &&
-            (c.sub_category || "").trim().toLowerCase() === invSubLower &&
-            (c.color || "").trim().toLowerCase() === invColorLower &&
-            (c.size || "").trim().toLowerCase() === invSizeLower
+        // 해당 품목의 파이프라인 주문 전체 (cutting + sewing + returned + finishing)
+        const matchingPipeline = (allPipelineOrders ?? []).filter(o =>
+            (o.main_category || "").trim().toLowerCase() === mL &&
+            (o.sub_category || "").trim().toLowerCase() === sL &&
+            (o.color || "").trim().toLowerCase() === cL &&
+            (o.size || "").trim().toLowerCase() === szL
         );
-        return !hasCutting;
-    });
-    const needsCut = needCutItems.length;
+
+        const cuttingQty = matchingPipeline
+            .filter(o => o.stage === "cutting")
+            .reduce((sum, o) => sum + (o.quantity || 0), 0);
+
+        // 재단 이후 전 단계 합산 (sewing + returned + finishing)
+        const pipelineQty = matchingPipeline
+            .reduce((sum, o) => sum + (o.quantity || 0), 0);
+
+        // 실질 유효재고 = 실제재고 + 생산파이프라인 전체
+        const effectiveStock = currentStock + pipelineQty;
+        // 지난 1년 중 가장 많이 판매된 달의 수량 (최소 유지 목표량)
+        const peakMonth = Object.values(item.monthlySales).length > 0
+            ? Math.max(...Object.values(item.monthlySales))
+            : 0;
+
+        return {
+            main_category: item.main_category,
+            sub_category: item.sub_category,
+            color: item.color,
+            size: item.size,
+            sold12m: item.sold12m,
+            peakMonth,
+            currentStock,
+            cuttingQty,
+            pipelineQty,
+            effectiveStock,
+        };
+    }).sort((a, b) => b.sold12m - a.sold12m); // 가장 많이 팔린 품목 순
+
+    // 카드 숫자: 유효재고가 연간 최고 월판매량보다 적은 품목 수
+    const needsCut = cutRecommendations.filter(r => r.effectiveStock < r.peakMonth).length;
 
     // 봉제 현황: sewing + returned 단계 주문 건수
     const sewingCount = productionOrders?.filter(o => o.stage === "sewing" || o.stage === "returned").length ?? 0;
@@ -109,7 +173,7 @@ export default async function DashboardPage() {
             projected_stock: currentStock + finishingQty
         };
     })
-        .filter(item => item.projected_stock < LOW_STOCK_THRESHOLD)
+        .filter(item => item.projected_stock < 10)
         .sort((a, b) => {
             // 재고 오름차순 정렬 (적은 것 우선)
             if (a.stock_quantity !== b.stock_quantity) {
@@ -174,10 +238,11 @@ export default async function DashboardPage() {
             needsCut={needsCut}
             sewingCount={sewingCount}
             needsPlanchaCount={needsPlanchaCount}
-            needsPlanchaItems={needsPlanchaItems.slice(0, 50)} // 상위 50개 제한
+            needsPlanchaItems={needsPlanchaItems.slice(0, 50)}
             hasNewFabricToday={hasNewFabricToday}
             readyToDeliverCount={readyToDeliverCount}
             readyToDeliverOrders={readyToDeliverOrders}
+            cutRecommendations={cutRecommendations}
         />
     );
 }
