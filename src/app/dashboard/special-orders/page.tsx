@@ -43,6 +43,8 @@ export default function SpecialOrdersPage() {
     const [showForm, setShowForm] = useState(false);
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [filterStatus, setFilterStatus] = useState<"all" | "active" | "done">("active");
+    const [sortBy, setSortBy] = useState<"created_at" | "due_date">("created_at");
+    const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
 
     // Edit state
     const [editingOrder, setEditingOrder] = useState<SpecialOrder | null>(null);
@@ -149,7 +151,13 @@ export default function SpecialOrdersPage() {
 
     if (!isAdmin) return null;
 
-    const filtered = filterStatus === "all" ? orders : orders.filter(o => o.status === filterStatus);
+    const filtered = (filterStatus === "all" ? orders : orders.filter(o => o.status === filterStatus))
+        .slice()
+        .sort((a, b) => {
+            const valA = sortBy === "created_at" ? a.created_at : a.due_date;
+            const valB = sortBy === "created_at" ? b.created_at : b.due_date;
+            return sortDir === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        });
 
     return (
         <div className={styles.page}>
@@ -223,7 +231,7 @@ export default function SpecialOrdersPage() {
                 </div>
             )}
 
-            {/* Filter */}
+            {/* Filter + Sort */}
             <div className={styles.filterBar}>
                 {(["active", "all", "done"] as const).map(f => (
                     <button key={f}
@@ -234,6 +242,34 @@ export default function SpecialOrdersPage() {
                                 : (lang === "ko" ? "전체" : "Todos")}
                     </button>
                 ))}
+
+                <div className={styles.sortGroup}>
+                    <button
+                        className={`${styles.sortBtn} ${sortBy === "created_at" ? styles.sortActive : ""}`}
+                        onClick={() => {
+                            if (sortBy === "created_at") setSortDir(d => d === "asc" ? "desc" : "asc");
+                            else { setSortBy("created_at"); setSortDir("desc"); }
+                        }}
+                    >
+                        📅 {lang === "ko" ? "등록일" : "Registro"}
+                        {sortBy === "created_at" && (
+                            <span className={styles.sortArrow}>{sortDir === "desc" ? "↓" : "↑"}</span>
+                        )}
+                    </button>
+                    <button
+                        className={`${styles.sortBtn} ${sortBy === "due_date" ? styles.sortActive : ""}`}
+                        onClick={() => {
+                            if (sortBy === "due_date") setSortDir(d => d === "asc" ? "desc" : "asc");
+                            else { setSortBy("due_date"); setSortDir("asc"); }
+                        }}
+                    >
+                        ⏰ {lang === "ko" ? "납품기일" : "Entrega"}
+                        {sortBy === "due_date" && (
+                            <span className={styles.sortArrow}>{sortDir === "desc" ? "↓" : "↑"}</span>
+                        )}
+                    </button>
+                </div>
+
                 <span className={styles.count}>
                     {filtered.length}{lang === "ko" ? "건" : " pedidos"}
                 </span>
