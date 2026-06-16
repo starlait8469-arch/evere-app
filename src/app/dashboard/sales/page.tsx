@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/context/LanguageContext";
 import styles from "./sales.module.css";
@@ -30,88 +30,107 @@ export default function SalesPage() {
     const [sellInputs, setSellInputs] = useState<Record<string, string>>({});
     // 확인 팝업 (판매할 상세 정보)
     const [confirmSale, setConfirmSale] = useState<{ id: string, name: string, sub: string, qty: number } | null>(null);
+    // 중복 제출 방지
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const supabase = createClient();
+    // supabase 클라이언트를 한 번만 생성 (매 렌더마다 새로 생성하지 않도록)
+    const supabaseRef = useRef(createClient());
+    const supabase = supabaseRef.current;
     const [filterMain, setFilterMain] = useState("all");
     const [filterSub, setFilterSub] = useState("all");
 
     useEffect(() => {
-        // 현재 인증된 유저 가져오기
-        supabase.auth.getUser().then(({ data: { user } }) => {
-            setCurrentUser(user);
-        });
-        fetchAvailableItems();
+        // React StrictMode에서 useEffect가 두 번 실행되는 것을 방지하는 cleanup ref
+        let cancelled = false;
+
+        const init = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!cancelled) setCurrentUser(user);
+
+            setLoading(true);
+            const [invRes, catRes] = await Promise.all([
+                supabase.from("inventory").select("*").gt("quantity", 0),
+                supabase.from("categories").select("name, price")
+            ]);
+
+            if (cancelled) return;
+
+            if (catRes.data) {
+                const prices: Record<string, number> = {};
+                catRes.data.forEach(c => prices[(c.name || "").trim().toLowerCase()] = c.price || 0);
+                setCategoryPrices(prices);
+            }
+
+            if (invRes.error) {
+                console.error("Error fetching items:", invRes.error);
+            } else if (invRes.data) {
+                const sortedData = [...invRes.data].sort((a, b) => {
+                    if (a.sub_category !== b.sub_category) {
+                        const order = [
+                            "Camisa ML (SH-01)", "Camisa MC (SH-02)", "Pantalon tropical (PH-01)", "Saco tropical (CH-01)",
+                            "Camisa ML (S-01)", "Camisa 3/4 (S-02)", "Camisa MC (S-03)", "Camisa Elastizada ML (S-04)",
+                            "Pollera tropical (Sk-01)", "Pantalon tropical (P-01)", "Saco tropical (C-01)",
+                            "Pantalon sastrera (P-02)", "Saco Sastrera (C-02)", "Pantalon gabardina (P-03)"
+                        ];
+                        const idxA = order.findIndex(o => o.toLowerCase() === (a.sub_category || "").toLowerCase());
+                        const idxB = order.findIndex(o => o.toLowerCase() === (b.sub_category || "").toLowerCase());
+                        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                        if (idxA !== -1) return -1;
+                        if (idxB !== -1) return 1;
+                        return (a.sub_category || "").localeCompare(b.sub_category || "");
+                    }
+                    const getColorRank = (color: string) => {
+                        const c = (color || "").toLowerCase();
+                        if (c === "blanco") return 1;
+                        if (c === "negro") return 2;
+                        if (c === "azul") return 3;
+                        if (c === "gris") return 4;
+                        return 5;
+                    };
+                    const rankA = getColorRank(a.color);
+                    const rankB = getColorRank(b.color);
+                    if (rankA !== rankB) return rankA - rankB;
+                    if (rankA === 5 && a.color !== b.color) return (a.color || "").localeCompare(b.color || "");
+                    const sizeOrder = ["s", "m", "l", "xl", "xxl"];
+                    const sA = (a.size || "").toLowerCase();
+                    const sB = (b.size || "").toLowerCase();
+                    const sIdxA = sizeOrder.indexOf(sA);
+                    const sIdxB = sizeOrder.indexOf(sB);
+                    if (sIdxA !== -1 && sIdxB !== -1) return sIdxA - sIdxB;
+                    if (sIdxA !== -1) return -1;
+                    if (sIdxB !== -1) return 1;
+                    const numA = parseInt(a.size);
+                    const numB = parseInt(b.size);
+                    if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                    return sA.localeCompare(sB);
+                });
+                setItems(sortedData);
+            }
+            setLoading(false);
+        };
+
+        init();
+
+        // cleanup: StrictMode의 두 번째 실행 결과가 state에 반영되지 않도록
+        return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchAvailableItems = async () => {
         setLoading(true);
-        // 수량이 1개 이상인(재고가 있는) 품목과 카테고리 정보 가져오기
         const [invRes, catRes] = await Promise.all([
             supabase.from("inventory").select("*").gt("quantity", 0),
             supabase.from("categories").select("name, price")
         ]);
-
         if (catRes.data) {
             const prices: Record<string, number> = {};
             catRes.data.forEach(c => prices[(c.name || "").trim().toLowerCase()] = c.price || 0);
             setCategoryPrices(prices);
         }
-
-        const data = invRes.data;
-        const error = invRes.error;
-
-        if (error) {
-            console.error("Error fetching items:", error);
-        } else if (data) {
-            // 커스텀 정렬 로직 (재고 페이지와 유사하게 적용)
-            const sortedData = [...data].sort((a, b) => {
-                // 서브 카테고리 우선
-                if (a.sub_category !== b.sub_category) {
-                    const order = [
-                        "Camisa ML (SH-01)", "Camisa MC (SH-02)", "Pantalon tropical (PH-01)", "Saco tropical (CH-01)",
-                        "Camisa ML (S-01)", "Camisa 3/4 (S-02)", "Camisa MC (S-03)", "Camisa Elastizada ML (S-04)",
-                        "Pollera tropical (Sk-01)", "Pantalon tropical (P-01)", "Saco tropical (C-01)",
-                        "Pantalon sastrera (P-02)", "Saco Sastrera (C-02)", "Pantalon gabardina (P-03)"
-                    ];
-                    const idxA = order.findIndex(o => o.toLowerCase() === (a.sub_category || "").toLowerCase());
-                    const idxB = order.findIndex(o => o.toLowerCase() === (b.sub_category || "").toLowerCase());
-                    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                    if (idxA !== -1) return -1;
-                    if (idxB !== -1) return 1;
-                    return (a.sub_category || "").localeCompare(b.sub_category || "");
-                }
-
-                // 색상
-                const getColorRank = (color: string) => {
-                    const c = (color || "").toLowerCase();
-                    if (c === "blanco") return 1;
-                    if (c === "negro") return 2;
-                    if (c === "azul") return 3;
-                    if (c === "gris") return 4;
-                    return 5;
-                };
-                const rankA = getColorRank(a.color);
-                const rankB = getColorRank(b.color);
-                if (rankA !== rankB) return rankA - rankB;
-                if (rankA === 5 && a.color !== b.color) return (a.color || "").localeCompare(b.color || "");
-
-                // 사이즈
-                const sizeOrder = ["s", "m", "l", "xl", "xxl"];
-                const sA = (a.size || "").toLowerCase();
-                const sB = (b.size || "").toLowerCase();
-                const sIdxA = sizeOrder.indexOf(sA);
-                const sIdxB = sizeOrder.indexOf(sB);
-                if (sIdxA !== -1 && sIdxB !== -1) return sIdxA - sIdxB;
-                if (sIdxA !== -1) return -1;
-                if (sIdxB !== -1) return 1;
-
-                const numA = parseInt(a.size);
-                const numB = parseInt(b.size);
-                if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-
-                return sA.localeCompare(sB);
-            });
-            setItems(sortedData);
+        if (invRes.error) {
+            console.error("Error fetching items:", invRes.error);
+        } else if (invRes.data) {
+            setItems(invRes.data);
         }
         setLoading(false);
     };
@@ -152,47 +171,52 @@ export default function SalesPage() {
 
     // 실제 판매 로직 (재고 차감 & 이력 기록)
     const executeSale = async () => {
-        if (!confirmSale || !currentUser) return;
+        if (!confirmSale || !currentUser || isSubmitting) return;
+        setIsSubmitting(true);
 
-        const item = items.find(i => i.id === confirmSale.id);
-        if (!item) return;
+        try {
+            const item = items.find(i => i.id === confirmSale.id);
+            if (!item) return;
 
-        // 1. 재고 차감 업데이트 (동시성 처리: RPC 사용)
-        const { data: updatedQty, error: invError } = await supabase
-            .rpc('increment_inventory', { row_id: item.id, delta: -confirmSale.qty });
+            // 1. 재고 차감 업데이트 (동시성 처리: RPC 사용)
+            const { data: updatedQty, error: invError } = await supabase
+                .rpc('increment_inventory', { row_id: item.id, delta: -confirmSale.qty });
 
-        if (invError) {
-            alert("Error updating inventory");
-            return;
+            if (invError) {
+                alert("Error updating inventory");
+                return;
+            }
+
+            // 2. 판매 장부에 기록
+            const currentPrice = categoryPrices[(item.sub_category || "").trim().toLowerCase()] || 0;
+            const { error: historyError } = await supabase
+                .from("sales_history")
+                .insert([{
+                    inventory_id: item.id,
+                    quantity: confirmSale.qty,
+                    unit_price: currentPrice,
+                    sold_by: currentUser.id
+                }]);
+
+            if (historyError) {
+                console.error("Error recording sale:", historyError);
+                alert("Error recording sale: " + historyError.message);
+            } else {
+                alert(lang === "ko" ? "판매가 완료되었습니다." : "Venta registrada con éxito.");
+            }
+
+            // 로컬 상태 즉시 업데이트
+            const finalQty = typeof updatedQty === 'number' ? updatedQty : item.quantity - confirmSale.qty;
+            setItems(prev => prev.map(i => i.id === item.id ? { ...i, quantity: finalQty } : i).filter(i => i.quantity > 0)); // 재고 0되면 목록에서 제외
+            setSellInputs(prev => {
+                const next = { ...prev };
+                delete next[item.id];
+                return next;
+            });
+            setConfirmSale(null);
+        } finally {
+            setIsSubmitting(false);
         }
-
-        // 2. 판매 장부에 기록
-        const currentPrice = categoryPrices[(item.sub_category || "").trim().toLowerCase()] || 0;
-        const { error: historyError } = await supabase
-            .from("sales_history")
-            .insert([{
-                inventory_id: item.id,
-                quantity: confirmSale.qty,
-                unit_price: currentPrice,
-                sold_by: currentUser.id
-            }]);
-
-        if (historyError) {
-            console.error("Error recording sale:", historyError);
-            alert("Error recording sale: " + historyError.message);
-        } else {
-            alert(lang === "ko" ? "판매가 완료되었습니다." : "Venta registrada con éxito.");
-        }
-
-        // 로컬 상태 즉시 업데이트
-        const finalQty = typeof updatedQty === 'number' ? updatedQty : item.quantity - confirmSale.qty;
-        setItems(prev => prev.map(i => i.id === item.id ? { ...i, quantity: finalQty } : i).filter(i => i.quantity > 0)); // 재고 0되면 목록에서 제외
-        setSellInputs(prev => {
-            const next = { ...prev };
-            delete next[item.id];
-            return next;
-        });
-        setConfirmSale(null);
     };
 
 
@@ -285,8 +309,8 @@ export default function SalesPage() {
                             <button className={styles.btnCancel} onClick={() => setConfirmSale(null)}>
                                 {t("cancel")}
                             </button>
-                            <button className={styles.btnConfirm} onClick={executeSale}>
-                                {t("confirm")}
+                            <button className={styles.btnConfirm} onClick={executeSale} disabled={isSubmitting}>
+                                {isSubmitting ? "..." : t("confirm")}
                             </button>
                         </div>
                     </div>
