@@ -494,8 +494,8 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
                                 </h2>
                                 <p className={styles.modalSubtitle}>
                                     {lang === "ko"
-                                        ? "지난 1년 최대 월판매량 기준 · 연간 판매 많은 순"
-                                        : "Basado en el mes pico de ventas del último año"}
+                                        ? "월평균 판매량 × 1.5 기준 · 연간 판매 많은 순"
+                                        : "Objetivo: promedio mensual × 1.5 · Ordenado por ventas anuales"}
                                 </p>
                             </div>
                             <button className={styles.modalClose} onClick={() => { setShowCutModal(false); setCutFilterMain("all"); setCutFilterSub("all"); setCutFilterUrgent(false); }}>✕</button>
@@ -590,7 +590,7 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
                                                         <span>{lang === "ko" ? `연간: ${item.sold12m}개` : `Año: ${item.sold12m}`}</span>
                                                         <span className={styles.cutSalesDivider}>·</span>
                                                         <span style={{ fontWeight: 700, color: "var(--text-primary)" }}>
-                                                            {lang === "ko" ? `최다월: ${item.peakMonth}개` : `Mes pico: ${item.peakMonth}`}
+                                                            {lang === "ko" ? `목표: ${item.peakMonth}개` : `Objetivo: ${item.peakMonth}`}
                                                         </span>
                                                     </div>
                                                 </div>

@@ -124,10 +124,8 @@ export default async function DashboardPage() {
 
         // 실질 유효재고 = 실제재고 + 생산파이프라인 전체
         const effectiveStock = currentStock + pipelineQty;
-        // 지난 1년 중 가장 많이 판매된 달의 수량 (최소 유지 목표량)
-        const peakMonth = Object.values(item.monthlySales).length > 0
-            ? Math.max(...Object.values(item.monthlySales))
-            : 0;
+        // 재단 권장량 = 월평균 판매량 × 1.5 (올림)
+        const peakMonth = Math.ceil((item.sold12m / 12) * 1.5);
 
         return {
             main_category: item.main_category,
@@ -141,7 +139,8 @@ export default async function DashboardPage() {
             pipelineQty,
             effectiveStock,
         };
-    }).sort((a, b) => b.sold12m - a.sold12m); // 가장 많이 팔린 품목 순
+    }).filter(r => (r.color || "").trim().toLowerCase() !== "gris") // Gris 색상 제외
+      .sort((a, b) => b.sold12m - a.sold12m); // 가장 많이 팔린 품목 순
 
     // 카드 숫자: 유효재고가 연간 최고 월판매량보다 적은 품목 수
     const needsCut = cutRecommendations.filter(r => r.effectiveStock < r.peakMonth).length;
