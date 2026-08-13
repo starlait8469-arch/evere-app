@@ -30,13 +30,13 @@ export default async function DashboardPage() {
         .select("quantity, created_at, inventory:inventory_id(main_category, sub_category, color, size)")
         .gte("created_at", twelveMonthsAgo.toISOString());
 
-    // 2) 가게 주문 납품 이력 (store_order_items.delivered_qty > 0)
-    //    special_orders는 완전히 별개 테이블이므로 자동으로 제외됨
+    // 2) 가게 주문 납품 이력 (store_deliveries_history: 납품할 때마다 이번 납품분만 기록)
+    //    - delivered_qty(누적값) 대신 이 테이블을 사용해야 날짜 필터가 정확하고 중복이 없음
+    //    - special_orders는 완전히 별개 테이블이므로 자동으로 제외됨
     const { data: deliveredItemsRaw } = await supabase
-        .from("store_order_items")
-        .select("main_category, sub_category, color, size, delivered_qty, store_orders!inner(created_at)")
-        .gt("delivered_qty", 0)
-        .gte("store_orders.created_at", twelveMonthsAgo.toISOString());
+        .from("store_deliveries_history")
+        .select("quantity, created_at, store_order_items(main_category, sub_category, color, size)")
+        .gte("created_at", twelveMonthsAgo.toISOString());
 
     // cutting + sewing + returned(봉제입고) + finishing(Plancha) 전체 파이프라인 조회
     const { data: allPipelineOrders } = await supabase
@@ -81,14 +81,14 @@ export default async function DashboardPage() {
         addToSalesMap(inv.main_category, inv.sub_category, inv.color, inv.size, row.quantity || 0, yyyymm);
     });
 
-    // 가게 주문 납품 이력 집계
+    // 가게 주문 납품 이력 집계 (store_deliveries_history)
     (deliveredItemsRaw ?? []).forEach(row => {
-        const qty = row.delivered_qty || 0;
+        const qty = row.quantity || 0;
         if (qty <= 0) return;
-        const order = (row.store_orders as unknown) as { created_at: string } | null;
-        if (!order) return;
-        const yyyymm = (order.created_at as string).slice(0, 7);
-        addToSalesMap(row.main_category, row.sub_category, row.color, row.size, qty, yyyymm);
+        const item = (row.store_order_items as unknown) as { main_category: string; sub_category: string; color: string; size: string } | null;
+        if (!item) return;
+        const yyyymm = (row.created_at as string).slice(0, 7);
+        addToSalesMap(item.main_category, item.sub_category, item.color, item.size, qty, yyyymm);
     });
 
     const cutRecommendations = Array.from(salesMap.values()).map(item => {
