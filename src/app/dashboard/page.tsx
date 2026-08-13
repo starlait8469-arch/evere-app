@@ -24,10 +24,19 @@ export default async function DashboardPage() {
     const twelveMonthsAgo = new Date();
     twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1);
 
+    // 1) 판매 등록 페이지를 통한 판매 이력
     const { data: salesRaw } = await supabase
         .from("sales_history")
         .select("quantity, created_at, inventory:inventory_id(main_category, sub_category, color, size)")
         .gte("created_at", twelveMonthsAgo.toISOString());
+
+    // 2) 가게 주문 납품 이력 (store_order_items.delivered_qty > 0)
+    //    special_orders는 완전히 별개 테이블이므로 자동으로 제외됨
+    const { data: deliveredItemsRaw } = await supabase
+        .from("store_order_items")
+        .select("main_category, sub_category, color, size, delivered_qty, store_orders!inner(created_at)")
+        .gt("delivered_qty", 0)
+        .gte("store_orders.created_at", twelveMonthsAgo.toISOString());
 
     // cutting + sewing + returned(봉제입고) + finishing(Plancha) 전체 파이프라인 조회
     const { data: allPipelineOrders } = await supabase
@@ -42,30 +51,44 @@ export default async function DashboardPage() {
         monthlySales: { [yyyymm: string]: number }; // YYYY-MM → 해당월 판매 합계
     }>();
 
-    (salesRaw ?? []).forEach(row => {
-        const inv = (row.inventory as unknown) as { main_category: string; sub_category: string; color: string; size: string } | null;
-        if (!inv) return;
-        const m = (inv.main_category || "").trim().toLowerCase();
-        const s = (inv.sub_category || "").trim().toLowerCase();
-        const c = (inv.color || "").trim().toLowerCase();
-        const sz = (inv.size || "").trim().toLowerCase();
+    const addToSalesMap = (
+        main_category: string, sub_category: string, color: string, size: string,
+        qty: number, yyyymm: string
+    ) => {
+        const m = (main_category || "").trim().toLowerCase();
+        const s = (sub_category || "").trim().toLowerCase();
+        const c = (color || "").trim().toLowerCase();
+        const sz = (size || "").trim().toLowerCase();
         const key = `${m}|${s}|${c}|${sz}`;
-        const yyyymm = (row.created_at as string).slice(0, 7); // "2025-06"
-        const qty = row.quantity || 0;
         if (salesMap.has(key)) {
             const entry = salesMap.get(key)!;
             entry.sold12m += qty;
             entry.monthlySales[yyyymm] = (entry.monthlySales[yyyymm] || 0) + qty;
         } else {
             salesMap.set(key, {
-                main_category: inv.main_category,
-                sub_category: inv.sub_category,
-                color: inv.color,
-                size: inv.size,
+                main_category, sub_category, color, size,
                 sold12m: qty,
                 monthlySales: { [yyyymm]: qty },
             });
         }
+    };
+
+    // 판매 등록 이력 집계
+    (salesRaw ?? []).forEach(row => {
+        const inv = (row.inventory as unknown) as { main_category: string; sub_category: string; color: string; size: string } | null;
+        if (!inv) return;
+        const yyyymm = (row.created_at as string).slice(0, 7);
+        addToSalesMap(inv.main_category, inv.sub_category, inv.color, inv.size, row.quantity || 0, yyyymm);
+    });
+
+    // 가게 주문 납품 이력 집계
+    (deliveredItemsRaw ?? []).forEach(row => {
+        const qty = row.delivered_qty || 0;
+        if (qty <= 0) return;
+        const order = (row.store_orders as unknown) as { created_at: string } | null;
+        if (!order) return;
+        const yyyymm = (order.created_at as string).slice(0, 7);
+        addToSalesMap(row.main_category, row.sub_category, row.color, row.size, qty, yyyymm);
     });
 
     const cutRecommendations = Array.from(salesMap.values()).map(item => {
