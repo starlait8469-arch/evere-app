@@ -678,4 +678,121 @@
     color: #10b981;
     white-space: nowrap;
     flex-shrink: 0;
-}
+}
+
+/* ── 봉제 보내기 우선순위 모달 ── */
+.sewingQueueItem {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--bg-input, rgba(255, 255, 255, 0.04));
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    transition: border-color 0.2s;
+}
+
+.sewingQueueItem:hover {
+    border-color: var(--border-hover);
+}
+
+.sewingQueueItemEspecial {
+    border-color: rgba(251, 191, 36, 0.45);
+    background: rgba(251, 191, 36, 0.06);
+}
+
+.sewingQueueItemZeroStock {
+    border-color: rgba(239, 68, 68, 0.35);
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.sewingRank {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text-muted);
+    min-width: 26px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.sewingPriorityBadge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.sewingPriorityEspecial {
+    background: rgba(251, 191, 36, 0.18);
+    color: #f59e0b;
+}
+
+.sewingPriorityZeroStock {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+.sewingPrioritySales {
+    background: rgba(99, 102, 241, 0.15);
+    color: #818cf8;
+}
+
+.sewingQueueInfo {
+    flex: 1;
+    min-width: 0;
+}
+
+.sewingQueueName {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sewingQueueMeta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+}
+
+.sewingQueueStats {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.sewingQueueQtyLabel {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.sewingQueueQtyNum {
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.sewingQueueQtyZero {
+    color: #ef4444;
+}
+
+.sewingQueueQtyNormal {
+    color: var(--text-primary);
+}
+
+.sewingQueueSoldLabel {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+

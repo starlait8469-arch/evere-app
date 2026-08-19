@@ -254,6 +254,55 @@ export default async function DashboardPage() {
 
     const readyToDeliverCount = readyToDeliverOrders.length;
 
+    // ─── 봉제 보내기 우선순위 큐: 재단(cutting) 단계 품목 ───
+    const { data: cuttingOrdersRaw } = await supabase
+        .from("production_orders")
+        .select("id, main_category, sub_category, color, size, quantity")
+        .eq("stage", "cutting");
+
+    // 재단 중 품목에 현재 재고 + 연간 판매량 매핑
+    const sewingQueueItems = (cuttingOrdersRaw ?? []).map(order => {
+        const mL = (order.main_category || "").trim().toLowerCase();
+        const sL = (order.sub_category || "").trim().toLowerCase();
+        const cL = (order.color || "").trim().toLowerCase();
+        const szL = (order.size || "").trim().toLowerCase();
+
+        // 현재 재고
+        const currentStock = inventory
+            .filter(inv =>
+                (inv.main_category || "").trim().toLowerCase() === mL &&
+                (inv.sub_category || "").trim().toLowerCase() === sL &&
+                (inv.color || "").trim().toLowerCase() === cL &&
+                (inv.size || "").trim().toLowerCase() === szL
+            )
+            .reduce((sum, inv) => sum + (inv.quantity || 0), 0);
+
+        // 연간 판매량 (salesMap에서 참조)
+        const salesKey = `${mL}|${sL}|${cL}|${szL}`;
+        const sold12m = salesMap.get(salesKey)?.sold12m ?? 0;
+
+        // 우선순위: 0=Especial, 1=재고0, 2=판매량
+        const isEspecial = (order.main_category || "") === "Especial";
+        const priority = isEspecial ? 0 : currentStock === 0 ? 1 : 2;
+
+        return {
+            id: order.id,
+            main_category: order.main_category,
+            sub_category: order.sub_category,
+            color: order.color,
+            size: order.size,
+            quantity: order.quantity,
+            currentStock,
+            sold12m,
+            isEspecial,
+            priority,
+        };
+    }).sort((a, b) => {
+        if (a.priority !== b.priority) return a.priority - b.priority;
+        // 같은 우선순위 내에서는 판매량 내림차순
+        return b.sold12m - a.sold12m;
+    });
+
     return (
         <DashboardHome
             inProgress={inProgress}
@@ -265,6 +314,7 @@ export default async function DashboardPage() {
             readyToDeliverCount={readyToDeliverCount}
             readyToDeliverOrders={readyToDeliverOrders}
             cutRecommendations={cutRecommendations}
+            sewingQueueItems={sewingQueueItems}
         />
     );
 }

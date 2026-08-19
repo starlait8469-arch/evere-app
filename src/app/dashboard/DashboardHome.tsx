@@ -19,6 +19,19 @@ interface CutRecommendation {
     effectiveStock: number; // currentStock + pipelineQty
 }
 
+interface SewingQueueItem {
+    id: string;
+    main_category: string;
+    sub_category: string;
+    color: string;
+    size: string;
+    quantity: number;       // 재단 수량
+    currentStock: number;   // 현재 재고
+    sold12m: number;        // 연간 판매량
+    isEspecial: boolean;
+    priority: number;       // 0=Especial, 1=재고0, 2=판매량
+}
+
 interface Props {
     inProgress: number;
     needsCut: number;
@@ -29,6 +42,7 @@ interface Props {
     readyToDeliverCount: number;
     readyToDeliverOrders: { id: string; order_number: string | null; customer_name: string | null }[];
     cutRecommendations: CutRecommendation[];
+    sewingQueueItems: SewingQueueItem[];
 }
 
 type Stage = "cutting" | "sewing" | "returned" | "finishing" | "done";
@@ -52,7 +66,7 @@ interface FactoryOrder {
 
 
 
-export default function DashboardHome({ inProgress, needsCut, sewingCount, needsPlanchaCount, needsPlanchaItems, hasNewFabricToday, readyToDeliverCount, readyToDeliverOrders, cutRecommendations }: Props) {
+export default function DashboardHome({ inProgress, needsCut, sewingCount, needsPlanchaCount, needsPlanchaItems, hasNewFabricToday, readyToDeliverCount, readyToDeliverOrders, cutRecommendations, sewingQueueItems }: Props) {
     const { t, lang } = useLanguage();
     const supabase = createClient();
 
@@ -116,7 +130,8 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
     const [planchaSelectedIds, setPlanchaSelectedIds] = useState<Set<string>>(new Set());
     const [planchaSending, setPlanchaSending] = useState(false);
 
-
+    // ── 봉제 보내기 모달 ──
+    const [showSewingQueueModal, setShowSewingQueueModal] = useState(false);
 
     // 봉제공장 목록 + 봉제 건수 로드
     const fetchFactories = async () => {
@@ -255,6 +270,24 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
             onClick: (e: React.MouseEvent) => {
                 e.preventDefault();
                 setShowPlanchaModal(true);
+            },
+        },
+        {
+            label: lang === "ko" ? "봉제 보내기" : "Cola de costura",
+            value: sewingQueueItems.length,
+            icon: (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path d="M4 6h16M4 10h16M4 14h10M4 18h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <circle cx="20" cy="16" r="3" stroke="currentColor" strokeWidth="2" />
+                    <path d="M20 13v-1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+            ),
+            color: "#10b981",
+            bg: "rgba(16,185,129,0.12)",
+            href: "#",
+            onClick: (e: React.MouseEvent) => {
+                e.preventDefault();
+                setShowSewingQueueModal(true);
             },
         },
     ];
@@ -845,6 +878,109 @@ export default function DashboardHome({ inProgress, needsCut, sewingCount, needs
                                 href="/dashboard/production"
                                 className={styles.modalGoBtn}
                                 style={{ background: "rgba(139,92,246,0.15)", color: "#8b5cf6" }}
+                            >
+                                {lang === "ko" ? "생산라인으로 이동 →" : "Ir a producción →"}
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── 봉제 보내기 우선순위 모달 ─── */}
+            {showSewingQueueModal && (
+                <div className={styles.modalOverlay} onClick={() => setShowSewingQueueModal(false)}>
+                    <div className={styles.modal} onClick={e => e.stopPropagation()}>
+                        <div className={styles.modalHeader}>
+                            <div>
+                                <h2 className={styles.modalTitle}>
+                                    🧵 {lang === "ko" ? "봉제 보내기 순서" : "Cola de costura"}
+                                </h2>
+                                <p className={styles.modalSubtitle}>
+                                    {lang === "ko"
+                                        ? "재단 완료 후 봉제공장에 보낼 우선순위"
+                                        : "Orden de prioridad para enviar a costura"}
+                                </p>
+                            </div>
+                            <button className={styles.modalClose} onClick={() => setShowSewingQueueModal(false)}>✕</button>
+                        </div>
+
+                        {/* 우선도 범례 */}
+                        <div style={{ display: "flex", gap: 8, padding: "10px 20px", borderBottom: "1px solid var(--border)", flexWrap: "wrap" }}>
+                            <span className={`${styles.sewingPriorityBadge} ${styles.sewingPriorityEspecial}`}>⭐ Especial</span>
+                            <span className={`${styles.sewingPriorityBadge} ${styles.sewingPriorityZeroStock}`}>
+                                {lang === "ko" ? "🔴 재고 0" : "🔴 Sin stock"}
+                            </span>
+                            <span className={`${styles.sewingPriorityBadge} ${styles.sewingPrioritySales}`}>
+                                {lang === "ko" ? "📈 판매량" : "📈 Ventas"}
+                            </span>
+                        </div>
+
+                        {sewingQueueItems.length === 0 ? (
+                            <div className={styles.modalEmpty}>
+                                {lang === "ko" ? "재단 중인 품목이 없습니다." : "No hay artículos en corte."}
+                            </div>
+                        ) : (
+                            <div className={styles.modalList}>
+                                {sewingQueueItems.map((item, idx) => {
+                                    const priorityClass =
+                                        item.isEspecial ? styles.sewingQueueItemEspecial
+                                        : item.currentStock === 0 ? styles.sewingQueueItemZeroStock
+                                        : "";
+                                    const badgeClass =
+                                        item.isEspecial ? styles.sewingPriorityEspecial
+                                        : item.currentStock === 0 ? styles.sewingPriorityZeroStock
+                                        : styles.sewingPrioritySales;
+                                    const badgeLabel =
+                                        item.isEspecial ? "⭐ Especial"
+                                        : item.currentStock === 0 ? (lang === "ko" ? "🔴 재고 0" : "🔴 Sin stock")
+                                        : (lang === "ko" ? "📈 판매량" : "📈 Ventas");
+
+                                    return (
+                                        <div
+                                            key={item.id}
+                                            className={`${styles.sewingQueueItem} ${priorityClass}`}
+                                        >
+                                            <div className={styles.sewingRank}>#{idx + 1}</div>
+                                            <div className={styles.sewingQueueInfo}>
+                                                <div className={styles.sewingQueueName}>
+                                                    {item.sub_category || item.main_category}
+                                                </div>
+                                                <div className={styles.sewingQueueMeta}>
+                                                    <span className={`${styles.sewingPriorityBadge} ${badgeClass}`}>
+                                                        {badgeLabel}
+                                                    </span>
+                                                    {item.color && <span className={styles.cutTag}>🎨 {item.color}</span>}
+                                                    {item.size && <span className={styles.cutTag}>{lang === "ko" ? "사이즈" : "Talla"} {item.size}</span>}
+                                                </div>
+                                                {item.sold12m > 0 && (
+                                                    <div className={styles.sewingQueueSoldLabel} style={{ marginTop: 3 }}>
+                                                        {lang === "ko" ? `연간 ${item.sold12m}개 판매` : `${item.sold12m} uds/año`}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className={styles.sewingQueueStats}>
+                                                <div className={styles.sewingQueueQtyLabel}>
+                                                    {lang === "ko" ? "재고" : "Stock"}
+                                                </div>
+                                                <div className={`${styles.sewingQueueQtyNum} ${item.currentStock === 0 ? styles.sewingQueueQtyZero : styles.sewingQueueQtyNormal}`}>
+                                                    {item.currentStock}
+                                                </div>
+                                                <div className={styles.sewingQueueSoldLabel}>
+                                                    {lang === "ko" ? `재단 ${item.quantity}개` : `Corte: ${item.quantity}`}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        <div className={styles.modalFooter}>
+                            <Link
+                                href="/dashboard/production"
+                                className={styles.modalGoBtn}
+                                style={{ background: "rgba(16,185,129,0.15)", color: "#10b981" }}
+                                onClick={() => setShowSewingQueueModal(false)}
                             >
                                 {lang === "ko" ? "생산라인으로 이동 →" : "Ir a producción →"}
                             </Link>
