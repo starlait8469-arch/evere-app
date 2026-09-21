@@ -87,6 +87,9 @@ export default function ProductionPage() {
     const [fabricAction, setFabricAction] = useState<{ id: string; type: "in" | "out"; val: string } | null>(null);
     const [lastFabricOp, setLastFabricOp] = useState<{ id: string; name: string; prevQty: number; newQty: number } | null>(null);
 
+    // 가게 재고 맵 (sub_category|color|size → quantity)
+    const [inventoryMap, setInventoryMap] = useState<Map<string, number>>(new Map());
+
     // 신규 등록 폼 - 배치 방식 (색상 공통, 여러 행)
     const [categories, setCategories] = useState<Category[]>([]);
     const [batchColor, setBatchColor] = useState("");
@@ -128,7 +131,22 @@ export default function ProductionPage() {
         fetchFactories();
         fetchCategories();
         fetchFabrics();
+        fetchInventoryMap();
     }, []);
+
+    const fetchInventoryMap = async () => {
+        const { data } = await supabase
+            .from("inventory")
+            .select("sub_category, color, size, quantity");
+        if (data) {
+            const map = new Map<string, number>();
+            data.forEach((item: { sub_category: string; color: string; size: string; quantity: number }) => {
+                const key = `${(item.sub_category || "").toLowerCase()}|${(item.color || "").toLowerCase()}|${(item.size || "").toLowerCase()}`;
+                map.set(key, (map.get(key) ?? 0) + item.quantity);
+            });
+            setInventoryMap(map);
+        }
+    };
 
     const fetchSlips = async () => {
         setSlipsLoading(true);
@@ -917,6 +935,34 @@ export default function ProductionPage() {
                                                             {order.color && <span className={styles.tag}>{order.color}</span>}
                                                             {order.size && <span className={styles.tag}>{order.size}</span>}
                                                         </div>
+                                                        {/* 가게 재고 & 생산 중 수량 */}
+                                                        {(() => {
+                                                            const invKey = `${(order.sub_category || order.main_category || "").toLowerCase()}|${(order.color || "").toLowerCase()}|${(order.size || "").toLowerCase()}`;
+                                                            const storeQty = inventoryMap.get(invKey) ?? 0;
+                                                            const inProgressQty = orders
+                                                                .filter(o =>
+                                                                    o.stage !== "done" &&
+                                                                    o.id !== order.id &&
+                                                                    (o.sub_category || o.main_category || "").toLowerCase() === (order.sub_category || order.main_category || "").toLowerCase() &&
+                                                                    (o.color || "").toLowerCase() === (order.color || "").toLowerCase() &&
+                                                                    (o.size || "").toLowerCase() === (order.size || "").toLowerCase()
+                                                                )
+                                                                .reduce((sum, o) => sum + o.quantity, 0) + order.quantity;
+                                                            return (
+                                                                <div className={styles.stockInfoRow}>
+                                                                    <div className={styles.stockBadge} title={lang === "ko" ? "현재 가게 재고" : "Stock en tienda"}>
+                                                                        <span className={styles.stockIcon}>🏪</span>
+                                                                        <span className={styles.stockLabel}>{lang === "ko" ? "재고" : "Stock"}</span>
+                                                                        <span className={`${styles.stockQty} ${storeQty === 0 ? styles.stockQtyZero : ""}`}>{storeQty}</span>
+                                                                    </div>
+                                                                    <div className={styles.stockBadge} style={{ background: "rgba(245,158,11,0.08)", borderColor: "rgba(245,158,11,0.2)" }} title={lang === "ko" ? "생산 중 수량 (done 제외 전 단계 합산)" : "En producción"}>
+                                                                        <span className={styles.stockIcon}>⚙️</span>
+                                                                        <span className={styles.stockLabel}>{lang === "ko" ? "생산중" : "Prod."}</span>
+                                                                        <span className={styles.stockQty} style={{ color: "#f59e0b" }}>{inProgressQty}</span>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })()}
                                                         {order.stage !== "cutting" && order.sewing_factories && (
                                                             <div className={styles.factoryLabel}>
                                                                 🏭 {order.sewing_factories.name}
